@@ -2,119 +2,103 @@ package dmt;
 
 import hlt.GameMap;
 import hlt.Move;
-import hlt.Player;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Stack;
 
 public enum StrategyHelper {
     HELPER;
 
     private static final int FLEE_INDICATOR = 2;
 
-    private Map<Integer, State> states;
+    private Stack<GameState> states;
     private SplitToNearestPlanetsStrategy splitToNearestPlanetsStrategy;
-    private ExploringStrategy exploringStrategy;
+    private MoveOrKillStrategy moveOrKillStrategy;
     private FleeStrategy fleeStrategy;
 
     private Strategy currentStrategy;
 
-    public void init(GameMap gameMap) {
-        String initialMapIntelligence =
-                "width: " + gameMap.getWidth() +
-                "; height: " + gameMap.getHeight() +
-                "; players: " + gameMap.getAllPlayers().size() +
-                "; planets: " + gameMap.getAllPlanets().size()
-                ;
-        Utils.log(initialMapIntelligence);
+    public void init(GameMap map) {
+        Utils.log(String.format("Initialized map %s x %s with %s players and %s free planets (I am %s)",
+                map.getWidth(), map.getHeight(), map.getAllPlayers().size(), map.getAllPlanets().size(), map.getMyPlayerId()));
 
-        states = new HashMap<>();
+        states = new Stack<>();
+        states.push(new GameState(map, 0));
 
-        splitToNearestPlanetsStrategy = new SplitToNearestPlanetsStrategy(gameMap);
-        exploringStrategy = new ExploringStrategy();
+        splitToNearestPlanetsStrategy = new SplitToNearestPlanetsStrategy();
+        moveOrKillStrategy = new MoveOrKillStrategy();
         fleeStrategy = new FleeStrategy();
 
         currentStrategy = splitToNearestPlanetsStrategy;
     }
 
     public Strategy getStrategy(int turn, GameMap gameMap) {
-        states.put(turn, new State(gameMap));
+        states.push(new GameState(gameMap, turn));
 
-        String mapStat = "My id is " + gameMap.getMyPlayer().getId();
-        for (Player p : gameMap.getAllPlayers()) {
-            mapStat += "; player " + p.getId() + " has " + p.getShips().size();
-        }
-        mapStat += "--> Total ships: " + gameMap.getAllShips().size();
-        Utils.log(mapStat);
-        Utils.log("My undocked ships: " + Utils.getUndockedShips(gameMap).size());
         // TODO : analyse previous states
 
-        currentStrategy = getNextStrategy(gameMap);
+        currentStrategy = getNextStrategy();
         Utils.log("Current strategy: " + currentStrategy.getStrategyName());
 
         return currentStrategy;
     }
 
-    public int getTurn() {
-        return states.size();
+    public GameState getCurrentState() {
+        return states.peek();
     }
 
-    public State getCurrentState() {
-        return states.get(getTurn());
-    }
-
-    public void rollbackToDefaultStrategy(GameMap gameMap, ArrayList<Move> moveList) {
+    public void rollbackToDefaultStrategy(ArrayList<Move> moveList) {
         Utils.log("Rolling back to default strategy!", true);
 
         moveList.clear();
-        currentStrategy = exploringStrategy;
+        currentStrategy = moveOrKillStrategy;
 
         try {
-            currentStrategy.calculateMovements(gameMap, moveList);
+            currentStrategy.calculateMovements(moveList);
         } catch (StrategyException ignored) {
         }
     }
 
-    private Strategy getNextStrategy(GameMap gameMap) {
+    private Strategy getNextStrategy() {
         if (fleeStrategy.isActivated()) {
             return fleeStrategy;
         }
 
-        if (currentStrategy == splitToNearestPlanetsStrategy && validateSplitStrategy(gameMap)) {
+        if (currentStrategy == splitToNearestPlanetsStrategy && validateSplitStrategy()) {
             return splitToNearestPlanetsStrategy;
         } else {
-            if (validateFleeStrategy(gameMap)) {
-                fleeStrategy.initStrategy(gameMap);
+            if (validateFleeStrategy()) {
+                fleeStrategy.initStrategy();
                 return fleeStrategy;
             }
 
             // TODO: support extra strategies
-            return exploringStrategy;
+            return moveOrKillStrategy;
         }
     }
 
-    private boolean validateSplitStrategy(GameMap gameMap) {
-        return Utils.getUndockedShips(gameMap).size() != 0;
+    private boolean validateSplitStrategy() {
+        return getCurrentState().getMyUndockedShips().size() != 0;
     }
 
-    private boolean validateFleeStrategy(GameMap gameMap) {
-        if (gameMap.getAllPlayers().size() != 4) {
+    private boolean validateFleeStrategy() {
+        GameState state = getCurrentState();
+
+        if (state.getNumberOfPlayers() != 4) {
             return false;
         }
 
-        int all = gameMap.getAllPlanets().size();
-        int mine = Utils.getMyPlanets(gameMap).size();
-        int free = Utils.getFreePlanets(gameMap).size();
-        int enemies = Utils.getEnemiesPlanets(gameMap).size();
+        int all = state.getAllPlanets().size();
+        int mine = state.getAllMyPlanets().size();
+        int free = state.getFreePlanets().size();
+        int enemies = state.getEnemiesPlanets().size();
         Utils.log(String.format("Planets info: total %s, mine %s, enemies %s, free %s", all, mine, enemies, free));
 
-        if (free != 0) {
+        if (free >= FLEE_INDICATOR) {
             return false;
         }
 
         return mine <= FLEE_INDICATOR;
     }
-
 
 }

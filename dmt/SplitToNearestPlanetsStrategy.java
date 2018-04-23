@@ -6,20 +6,22 @@ import java.util.*;
 
 class SplitToNearestPlanetsStrategy implements Strategy {
 
+    // TODO : Fix collision validation as in some rare cases collision still occurs
+
     private static final String NAME = "Split initial ships to nearest planets";
-    private static final int MAX_INITIAL_COLLISION_CHECK = 3;
+
     private static final int MAX_CLOSEST_PLANETS = 5;
+    private static final int MAX_INITIAL_COLLISION_CHECK = 3;
 
     @Override
     public String getStrategyName() {
         return NAME;
     }
 
-    // Ship.id -> Planet.id
-    private Map<Integer, Integer> shipsToPlanets = new HashMap<>();
+    private Map<Integer, Integer> shipsToPlanets = new HashMap<>(); // Ship.id -> Planet.id
 
-    SplitToNearestPlanetsStrategy(GameMap gameMap) {
-        Map<Ship, Planet> shipsPlanetsMap = generateShipPlanetMap(gameMap);
+    SplitToNearestPlanetsStrategy() {
+        Map<Ship, Planet> shipsPlanetsMap = generateShipPlanetMap();
         checkShipsCollision(shipsPlanetsMap);
 
         for (Ship ship : shipsPlanetsMap.keySet()) {
@@ -28,13 +30,11 @@ class SplitToNearestPlanetsStrategy implements Strategy {
         }
     }
 
-    private Map<Ship, Planet> generateShipPlanetMap(GameMap gameMap) {
-        // Consider all player's ships
-        Collection<Ship> allShips = gameMap.getMyPlayer().getShips().values();
+    private Map<Ship, Planet> generateShipPlanetMap() {
         Map<Ship, Planet> shipsPlanetsMap = new TreeMap<>(Comparator.comparingInt(Entity::getId));
 
-        for (Ship ship : allShips) {
-            List<Planet> nearestPlanets = Utils.getPlanetsSortedByRadiusAndDistance(gameMap, ship, MAX_CLOSEST_PLANETS);
+        for (Ship ship : getState().getAllMyShips()) {
+            List<Planet> nearestPlanets = Utils.getPlanetsSortedByRadiusAndDistance(ship, MAX_CLOSEST_PLANETS);
 
             for (Planet planet : nearestPlanets) {
                 if (shipsPlanetsMap.containsValue(planet)) {
@@ -52,28 +52,34 @@ class SplitToNearestPlanetsStrategy implements Strategy {
     private void checkShipsCollision(Map<Ship, Planet> shipsPlanetsMap) {
         int check = 0;
         boolean isCollision;
-        List<Line> lines = new ArrayList<>();
 
         do {
-            check++;
-            lines.clear();
-
-            for (Ship ship : shipsPlanetsMap.keySet()) {
-                Planet planet = shipsPlanetsMap.get(ship);
-                lines.add(new Line(new Position(ship.getXPos(), ship.getYPos()),
-                                   new Position(planet.getXPos(), planet.getYPos())));
-            }
-
-            isCollision = checkLinesCollision(lines);
+            isCollision = checkLinesCollision(shipsPlanetsMap);
 
             if (isCollision) {
                 Utils.log("Possible collision detected");
                 swapPlanetsForShips(shipsPlanetsMap);
             }
-        } while (isCollision && (check < MAX_INITIAL_COLLISION_CHECK));
+        } while (isCollision && (check++ <= MAX_INITIAL_COLLISION_CHECK));
     }
 
-    private boolean checkLinesCollision(List<Line> positions) {
+    private List<Line> regenerateLines(Map<Ship, Planet> shipsPlanetsMap) {
+        List<Line> lines = new ArrayList<>();
+
+        for (Ship ship : shipsPlanetsMap.keySet()) {
+            Planet planet = shipsPlanetsMap.get(ship);
+
+            if (planet != null) {
+                lines.add(new Line(ship, planet));
+            }
+        }
+
+        return lines;
+    }
+
+    private boolean checkLinesCollision(Map<Ship, Planet> shipsPlanetsMap) {
+        List<Line> positions = regenerateLines(shipsPlanetsMap);
+
         for (int i = 0; i < positions.size(); i++) {
             for (int j = i + 1; j < positions.size(); j++) {
                 if (Utils.intersectLines(positions.get(i), positions.get(j))) {
@@ -86,13 +92,14 @@ class SplitToNearestPlanetsStrategy implements Strategy {
     }
 
     private void swapPlanetsForShips(Map<Ship, Planet> shipsPlanetsMap) {
-        // We should have only 3 ships in the beginning
+        // We should have only three ships in the beginning
         ArrayList<Ship> ships = new ArrayList<>(shipsPlanetsMap.keySet());
         Ship ship0 = ships.get(0);
         Ship ship1 = ships.get(1);
         Ship ship2 = ships.get(2);
 
         if (ship0 == null || ship1 == null || ship2 == null) {
+            // It seems that something went wrong... better to use the first set of pairs
             Utils.log("SplitToNearestPlanetsStrategy: null ship for swapPlanetsForShips()", true);
             return;
         }
@@ -105,40 +112,48 @@ class SplitToNearestPlanetsStrategy implements Strategy {
     }
 
     @Override
-    public void calculateMovements(GameMap gameMap, ArrayList<Move> moveList) throws StrategyException {
-        Collection<Ship> ships = Utils.getUndockedShips(gameMap);
-        Collection<Planet> planets = gameMap.getAllPlanets().values();
+    public void calculateMovements(ArrayList<Move> moveList) throws StrategyException {
+        Collection<Ship> ships = getState().getMyUndockedShips();
+        Collection<Planet> planets = getState().getAllPlanets();
 
         for (Ship ship : ships) {
             Utils.log("Processing ship: " + ship);
             Planet planet = Utils.getPlanetById(shipsToPlanets.get(ship.getId()), planets);
 
             if (planet != null) {
-                if (planet.isOwned() && !Utils.isPlanetMine(planet)) {
-                    List<Ship> enemies = Utils.getSortedShipsByDistance(gameMap, ship, true);
-
-                    if (!Utils.isShipSentToAttack(gameMap, moveList, ship, enemies, true)) {
-                        // Can't attack the closest enemy, better to rollback
-                        throw new StrategyException("Can't attack the closest enemy");
-                    }
+                if (Utils.isPlanetOwnedByEnemy(planet)) {
+                    attackEnemies(moveList, ship);
                 } else {
-                    if (ship.canDock(planet)) {
-                        moveList.add(new DockMove(ship, planet));
-                    } else {
-                        ThrustMove newThrustMove = Navigation.navigateShipToDock(gameMap, ship, planet, Constants.MAX_SPEED);
-
-                        if (newThrustMove != null) {
-                            moveList.add(newThrustMove);
-                        } else {
-                            // Can't navigate to this planet, better to rollback
-                            throw new StrategyException("newThrustMove is null");
-                        }
-                    }
+                    navigateToPlanet(moveList, ship, planet);
                 }
             } else {
-                // This should be a rare case for this strategy
+                // This should be a rare case for this strategy, better to rollback
                 throw new StrategyException("Null processing planet");
             }
+        }
+    }
+
+    private void navigateToPlanet(ArrayList<Move> moveList, Ship ship, Planet planet) throws StrategyException {
+        if (ship.canDock(planet)) {
+            moveList.add(new DockMove(ship, planet));
+        } else {
+            ThrustMove newThrustMove = Utils.navigateShipToDock(ship, planet);
+
+            if (newThrustMove != null) {
+                moveList.add(newThrustMove);
+            } else {
+                // Can't navigate to this planet, better to rollback
+                throw new StrategyException("newThrustMove is null");
+            }
+        }
+    }
+
+    private void attackEnemies(ArrayList<Move> moveList, Ship ship) throws StrategyException {
+        List<Ship> enemies = Utils.getShipsSortedByDistance(ship, true);
+
+        if (!Utils.isShipSentToAttackEnemies(moveList, ship, enemies, true)) {
+            // Couldn't attack anyone, better to rollback
+            throw new StrategyException("Could't attack any enemy");
         }
     }
 

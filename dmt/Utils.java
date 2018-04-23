@@ -7,9 +7,7 @@ import java.util.*;
 public class Utils {
 
     // TODO : always fix logging before commit. Just in case :D
-    private static final boolean LOGGING = true;
-
-    // TODO : better to move getFreePlanets() and similar to State.java
+    private static final boolean LOGGING = false;
 
     /**
      * Returns the list of Planets from biggest to smallest
@@ -23,14 +21,9 @@ public class Utils {
     /**
      * Returns the list of planets from closest to farthest for this particular Ship
      */
-    static List<Planet> getPlanetsSortedByDistance(GameMap gameMap, Ship ship) {
-        Map<Planet, Double> distanceToPlanet = new HashMap<>();
-
-        for (Planet planet : gameMap.getAllPlanets().values()) {
-            distanceToPlanet.put(planet, ship.getDistanceTo(planet));
-        }
-
-        List<Map.Entry<Planet, Double>> sortedPlanets = new ArrayList<>(distanceToPlanet.entrySet());
+    static List<Planet> getPlanetsSortedByDistance(Ship ship) {
+        GameState state = StrategyHelper.HELPER.getCurrentState();
+        List<Map.Entry<Planet, Double>> sortedPlanets = getPlanetsSortedByDistance(ship, state);
         sortedPlanets.sort(Comparator.comparingDouble(Map.Entry::getValue));
 
         List<Planet> result = new ArrayList<>();
@@ -42,21 +35,30 @@ public class Utils {
         return result;
     }
 
+    private static List<Map.Entry<Planet, Double>> getPlanetsSortedByDistance(Ship ship, GameState state) {
+        Map<Planet, Double> distanceToPlanet = new HashMap<>();
+
+        for (Planet planet : state.getAllPlanets()) {
+            distanceToPlanet.put(planet, ship.getDistanceTo(planet));
+        }
+
+        return new ArrayList<>(distanceToPlanet.entrySet());
+    }
+
     /**
      * Returns the list of planets from closest to farthest for this particular Ship, considering planets' radius
+     * Number of planets to be checked: numberOfPlanets
      */
-    static List<Planet> getPlanetsSortedByRadiusAndDistance(GameMap gameMap, Ship ship, int numberOfPlanets) {
-        int counter = 0;
-        List<Planet> planets = getPlanetsSortedByDistance(gameMap, ship);
+    static List<Planet> getPlanetsSortedByRadiusAndDistance(Ship ship, int numberOfPlanets) {
+        int counter = -1;
         List<Planet> sortedByRadius = new ArrayList<>();
 
-        for (Planet planet : planets) {
-            if (counter == numberOfPlanets) {
+        for (Planet planet : getPlanetsSortedByDistance(ship)) {
+            if (counter++ == numberOfPlanets) {
                 break;
             }
 
             sortedByRadius.add(planet);
-            counter++;
         }
 
         return getPlanetsSortedByRadius(sortedByRadius);
@@ -66,21 +68,9 @@ public class Utils {
      * Returns the list of ships from closest to farthest for this particular Ship.
      * Set isEnemiesOnly to true if only enemies' ships should be returned.
      */
-    static List<Ship> getSortedShipsByDistance(GameMap gameMap, Ship myShip, boolean isEnemiesOnly) {
-        int playerId = StrategyHelper.HELPER.getCurrentState().getMyId();
-        Map<Ship, Double> distanceToShips = new HashMap<>();
-
-        for (Ship ship : gameMap.getAllShips()) {
-            if (isEnemiesOnly) {
-                if (ship.getOwner() != playerId) {
-                    distanceToShips.put(ship, ship.getDistanceTo(myShip));
-                }
-            } else {
-                distanceToShips.put(ship, ship.getDistanceTo(myShip));
-            }
-        }
-
-        List<Map.Entry<Ship, Double>> sortedDistances = new ArrayList<>(distanceToShips.entrySet());
+    static List<Ship> getShipsSortedByDistance(Ship myShip, boolean isEnemiesOnly) {
+        GameState state = StrategyHelper.HELPER.getCurrentState();
+        List<Map.Entry<Ship, Double>> sortedDistances = getShipsSortedByDistance(myShip, isEnemiesOnly, state);
         sortedDistances.sort(Comparator.comparingDouble(Map.Entry::getValue));
 
         List<Ship> result = new ArrayList<>();
@@ -90,6 +80,22 @@ public class Utils {
         }
 
         return result;
+    }
+
+    private static List<Map.Entry<Ship, Double>> getShipsSortedByDistance(Ship myShip, boolean isEnemiesOnly, GameState state) {
+        Map<Ship, Double> distanceToShips = new HashMap<>();
+
+        for (Ship ship : state.getAllShips()) {
+            if (isEnemiesOnly) {
+                if (ship.getOwner() != state.getMyId()) {
+                    distanceToShips.put(ship, ship.getDistanceTo(myShip));
+                }
+            } else {
+                distanceToShips.put(ship, ship.getDistanceTo(myShip));
+            }
+        }
+
+        return new ArrayList<>(distanceToShips.entrySet());
     }
 
     /**
@@ -145,107 +151,26 @@ public class Utils {
     }
 
     /**
-     * Returns my player's Undocked ships
-     */
-    static Collection<Ship> getUndockedShips(GameMap gameMap) {
-        List<Ship> result = new ArrayList<>();
-        Collection<Ship> allShips = gameMap.getMyPlayer().getShips().values();
-
-        for (Ship ship : allShips) {
-            if (ship.getDockingStatus() == Ship.DockingStatus.Undocked) {
-                result.add(ship);
-            }
-        }
-
-        return result;
-    }
-
-    /**
-     * Returns my player's planets
-     */
-    static Collection<Planet> getMyPlanets(GameMap gameMap) {
-        List<Planet> result = new ArrayList<>();
-        Collection<Planet> allPlanets = gameMap.getAllPlanets().values();
-
-        for (Planet planet : allPlanets) {
-            if (isPlanetMine(planet)) {
-                result.add(planet);
-            }
-        }
-
-        return result;
-    }
-
-    /**
-     * Returns enemies planets
-     */
-    static Collection<Planet> getEnemiesPlanets(GameMap gameMap) {
-        List<Planet> result = new ArrayList<>();
-        Collection<Planet> allPlanets = gameMap.getAllPlanets().values();
-
-        for (Planet planet : allPlanets) {
-            if (!isPlanetMine(planet)) {
-                result.add(planet);
-            }
-        }
-
-        return result;
-    }
-
-    /**
-     * Returns free planets
-     */
-    static Collection<Planet> getFreePlanets(GameMap gameMap) {
-        List<Planet> result = new ArrayList<>();
-        Collection<Planet> allPlanets = gameMap.getAllPlanets().values();
-
-        for (Planet planet : allPlanets) {
-            if (!planet.isOwned()) {
-                result.add(planet);
-            }
-        }
-
-        return result;
-    }
-
-    /**
-     * Returns all my ships
-     */
-    static Collection<Ship> getMyShips(GameMap gameMap) {
-        return gameMap.getMyPlayer().getShips().values();
-    }
-
-    /**
      * Returns true if the Planet belongs to my player
      */
-    static boolean isPlanetMine(Planet planet) {
+    static boolean isPlanetOwnedByMe(Planet planet) {
         int playerId = StrategyHelper.HELPER.getCurrentState().getMyId();
         return planet.isOwned() && planet.getOwner() == playerId;
+    }
+
+    /**
+     * Returns true if the Planet is owned but not by my player
+     */
+    static boolean isPlanetOwnedByEnemy(Planet planet) {
+        int playerId = StrategyHelper.HELPER.getCurrentState().getMyId();
+        return planet.isOwned() &&  planet.getOwner() != playerId;
     }
 
     /**
      * Returns true if the Planet allows more ships to be docked
      */
     static boolean doesPlanetHaveDockingSpots(Planet planet) {
-        return isPlanetMine(planet) && !planet.isFull();
-    }
-
-    /**
-     * NAVIGATION: Returns true if the ship was sent to attack enemy
-     */
-    static boolean isShipSentToAttack(GameMap gameMap, ArrayList<Move> moveList, Ship ship, List<Ship> enemyShips, boolean avoidObstacles) {
-        for (Ship enemyShip : enemyShips) {
-            ThrustMove newThrustMove = Navigation.navigateShipTowardsTarget(gameMap, ship,
-                    new Position(enemyShip.getXPos(), enemyShip.getYPos()), Constants.MAX_SPEED,
-                    avoidObstacles, Constants.MAX_NAVIGATION_CORRECTIONS, Math.PI / 180.0);
-
-            if (newThrustMove != null) {
-                moveList.add(newThrustMove);
-                return true;
-            }
-        }
-
-        return false;
+        return isPlanetOwnedByMe(planet) && !planet.isFull();
     }
 
     /**
@@ -286,5 +211,102 @@ public class Utils {
 
     private static boolean checkIntersectionPoint(double delta) {
         return delta < 0 || delta > 1;
+    }
+
+    /**
+     * Navigation shortcut
+     */
+    static ThrustMove navigateShipToDock(Ship ship, Planet planet) {
+        GameMap gameMap = StrategyHelper.HELPER.getCurrentState().getMap();
+        return Navigation.navigateShipToDock(gameMap, ship, planet, Constants.MAX_SPEED);
+    }
+
+    /**
+     * Navigation shortcut
+     */
+    static ThrustMove navigateShipToTarget(Ship ship, Position position, boolean avoidObstacles) {
+        GameMap gameMap = StrategyHelper.HELPER.getCurrentState().getMap();
+        return Navigation.navigateShipTowardsTarget(gameMap, ship, position, Constants.MAX_SPEED,
+                avoidObstacles, Constants.MAX_NAVIGATION_CORRECTIONS, Math.PI / 180.0);
+    }
+
+    /**
+     * Navigation: Returns true if the ship was sent to attack enemy
+     */
+    static boolean isShipSentToAttackEnemies(ArrayList<Move> moveList, Ship ship, List<Ship> enemyShips, boolean avoidObstacles) {
+        for (Ship enemyShip : enemyShips) {
+            ThrustMove newThrustMove = navigateShipToTarget(ship, enemyShip, avoidObstacles);
+
+            if (newThrustMove != null) {
+                moveList.add(newThrustMove);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Navigation: Returns true if the ship was sent to the nearest planet
+     */
+    static boolean isShipSentToNearestPlanet(ArrayList<Move> moveList, Ship ship, List<Planet> nearestPlanets) {
+        for (Planet planet : nearestPlanets) {
+            if (Utils.doesPlanetHaveDockingSpots(planet) && ship.canDock(planet)) {
+                moveList.add(new DockMove(ship, planet));
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Navigation: Returns true if the ship was sent to the nearest free planet
+     */
+    static boolean isShipSentToNearestFreePlanet(ArrayList<Move> moveList, Ship ship, List<Planet> nearestPlanets, int freePlanets) {
+        for (Planet planet : nearestPlanets) {
+            if (!planet.isOwned()) {
+                if (ship.canDock(planet)) {
+                    moveList.add(new DockMove(ship, planet));
+                    return true;
+                } else {
+                    // No need to rush to the last free planet like an idiot
+                    if (freePlanets != 1) {
+                        ThrustMove newThrustMove = Utils.navigateShipToDock(ship, planet);
+
+                        if (newThrustMove != null) {
+                            moveList.add(newThrustMove);
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Navigation: Returns true if the ship was sent to one of the nearest enemy docked to the planet
+     */
+    static boolean isShipSentToAttackDockedEnemies(ArrayList<Move> moveList, Ship ship, List<Ship> enemyShips, int threshold) {
+        int counter = -1;
+
+        for (Ship enemy : enemyShips) {
+            if (enemy.getDockingStatus() != Ship.DockingStatus.Undocked) {
+                ThrustMove newThrustMove = Utils.navigateShipToTarget(ship, enemy, true);
+
+                if (newThrustMove != null) {
+                    moveList.add(newThrustMove);
+                    return true;
+                }
+            }
+
+            if (counter++ == threshold) {
+                return false;
+            }
+        }
+
+        return false;
     }
 }

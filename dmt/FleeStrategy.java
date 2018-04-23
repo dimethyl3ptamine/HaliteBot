@@ -6,21 +6,22 @@ import java.util.*;
 
 public class FleeStrategy implements Strategy {
 
-    private static final String NAME = "Flee, coward, flee!";
+    private static final String NAME = "Flee, coward, flee (and pray)!";
 
-    // Ship.id -> Position
-    private Map<Integer, Position> shipsToBurrow = new HashMap<>();
+    private Map<Integer, Position> shipsToBurrow = new HashMap<>(); // Ship.id -> Position
     private boolean isActivated = false;
     private double width;
     private double height;
 
-    void initStrategy(GameMap map) {
+    void initStrategy() {
         if (!isActivated) {
             isActivated = true;
-            width = map.getWidth();
-            height = map.getHeight();
 
-            for (Ship ship : Utils.getMyShips(map)) {
+            GameMap gameMap = getState().getMap();
+            width = gameMap.getWidth();
+            height = gameMap.getHeight();
+
+            for (Ship ship : getState().getAllMyShips()) {
                 shipsToBurrow.put(ship.getId(), getClosestDesertPoint(ship));
             }
         }
@@ -36,11 +37,9 @@ public class FleeStrategy implements Strategy {
     }
 
     @Override
-    public void calculateMovements(GameMap gameMap, ArrayList<Move> moveList) {
+    public void calculateMovements(ArrayList<Move> moveList) {
         int shift = 0;
-        Collection<Ship> allShips = gameMap.getMyPlayer().getShips().values();
-
-        for (Ship ship : allShips) {
+        for (Ship ship : getState().getAllMyShips()) {
             Utils.log("Flee, coward: " + ship);
 
             if (ship.getDockingStatus() == Ship.DockingStatus.Docked) {
@@ -48,31 +47,26 @@ public class FleeStrategy implements Strategy {
                 continue;
             }
 
-            shift++;
-            Position cowardsBurrow = shipsToBurrow.get(ship.getId());
-            double desertionMetaX = getDesertionMetaPosition(shift, cowardsBurrow.getXPos());
-            double desertionMetaY = getDesertionMetaPosition(shift, cowardsBurrow.getYPos());
+            fleeAndPray(moveList, shift++, ship);
+        }
+    }
 
-            ThrustMove newThrustMove = Navigation.navigateShipTowardsTarget(gameMap, ship,
-                        new Position(desertionMetaX, desertionMetaY), Constants.MAX_SPEED,
-                        true, Constants.MAX_NAVIGATION_CORRECTIONS, Math.PI / 180.0);
+    private void fleeAndPray(ArrayList<Move> moveList, int shift, Ship ship) {
+        Position cowardsBurrow = shipsToBurrow.get(ship.getId());
+        double desX = getDesertionMetaPosition(shift, cowardsBurrow.getXPos());
+        double desY = getDesertionMetaPosition(shift, cowardsBurrow.getYPos());
 
-            if (newThrustMove != null) {
-                moveList.add(newThrustMove);
-            }
+        ThrustMove newThrustMove = Utils.navigateShipToTarget(ship, new Position(desX, desY), true);
+
+        // Pray!
+        if (newThrustMove != null) {
+            moveList.add(newThrustMove);
         }
     }
 
     private double getDesertionMetaPosition(int shift, double pos) {
-        int factor;
-
-        if (pos == width || pos == height) {
-            factor = -1;
-        } else {
-            factor = 1;
-        }
-
-        return pos + Constants.FORECAST_FUDGE_FACTOR * shift * factor;
+        int factor = (pos == width || pos == height) ? -1 : 1;
+        return pos + (Constants.FORECAST_FUDGE_FACTOR + 0.25) * shift * factor;
     }
 
     private Position getClosestDesertPoint(Ship ship) {

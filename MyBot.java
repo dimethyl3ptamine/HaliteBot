@@ -23,16 +23,15 @@ public class MyBot {
         StrategyHelper.HELPER.init(gameMap);
 
         while (true) {
-            turn++;
             moveList.clear();
             networking.updateMap(gameMap);
 
-            Strategy strategy = StrategyHelper.HELPER.getStrategy(turn, gameMap);
+            Strategy strategy = StrategyHelper.HELPER.getStrategy(turn++, gameMap);
             try {
-                strategy.calculateMovements(gameMap, moveList);
+                strategy.calculateMovements(moveList);
             } catch (StrategyException e) {
                 Utils.log(e.getMessage(), true);
-                StrategyHelper.HELPER.rollbackToDefaultStrategy(gameMap, moveList);
+                StrategyHelper.HELPER.rollbackToDefaultStrategy(moveList);
             }
 
             Networking.sendMoves(moveList);
