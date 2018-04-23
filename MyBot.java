@@ -1,4 +1,7 @@
-import dmt.Game;
+import dmt.Strategy;
+import dmt.StrategyException;
+import dmt.StrategyHelper;
+import dmt.Utils;
 import hlt.*;
 
 import java.util.*;
@@ -12,10 +15,26 @@ public class MyBot {
         final GameMap gameMap = networking.initialize(BOT_NAME);
         final ArrayList<Move> moveList = new ArrayList<>();
 
-        for (;;) {
+        Log.log("**H***E***L***L***O**");
+        Log.log("    " + BOT_NAME);
+        Log.log("**T***H***E***R***E**");
+
+        int turn = 0;
+        StrategyHelper.HELPER.init(gameMap);
+
+        while (true) {
+            turn++;
             moveList.clear();
             networking.updateMap(gameMap);
-            Game.calculateMovements(gameMap, moveList);
+
+            Strategy strategy = StrategyHelper.HELPER.getStrategy(turn, gameMap);
+            try {
+                strategy.calculateMovements(gameMap, moveList);
+            } catch (StrategyException e) {
+                Utils.log(e.getMessage(), true);
+                StrategyHelper.HELPER.rollbackToDefaultStrategy(gameMap, moveList);
+            }
+
             Networking.sendMoves(moveList);
         }
     }

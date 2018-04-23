@@ -1,31 +1,67 @@
 package dmt;
 
+import hlt.GameMap;
+import hlt.Log;
 import hlt.Planet;
+import hlt.Ship;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 
-class Utils {
+public class Utils {
 
-    // Returns from biggest to smallestd
+    private static final boolean LOGGING = false;
+
+    /**
+     * Returns the list of Planets from biggest to smallest
+     */
     static List<Planet> getSortedPlanetsByRadius(Collection<Planet> allPlanets) {
         ArrayList<Planet> planets = new ArrayList<>(allPlanets);
         planets.sort((o1, o2) -> Double.compare(o2.getRadius(), o1.getRadius()));
         return planets;
     }
 
+    /**
+     * Returns the list of planets from closest to farthest for this particular Ship
+     */
+    static List<Planet> getSortedPlanetsByDistance(GameMap gameMap, Ship ship) {
+        Map<Planet, Double> distanceToPlanet = new HashMap<>();
 
+        for (Planet planet : gameMap.getAllPlanets().values()) {
+            distanceToPlanet.put(planet, ship.getDistanceTo(planet));
+        }
 
-    /* TODO: maybe useful
-            // We now have 1 full minute to analyse the initial map.
-        final String initialMapIntelligence =
-                "width: " + gameMap.getWidth() +
-                "; height: " + gameMap.getHeight() +
-                "; players: " + gameMap.getAllPlayers().size() +
-                "; planets: " + gameMap.getAllPlanets().size();
-        Log.log(initialMapIntelligence);
+        List<Map.Entry<Planet, Double>> sortedPlanets = new ArrayList<>(distanceToPlanet.entrySet());
+        sortedPlanets.sort(Comparator.comparingDouble(Map.Entry::getValue));
 
-     * */
+        List<Planet> result = new ArrayList<>();
+
+        for (Map.Entry<Planet, Double> entry : sortedPlanets) {
+            result.add(entry.getKey());
+        }
+
+        return result;
+    }
+
+    /**
+     * Log message. It simply calls "Log.log(...)"
+     *
+     * @param isError - true if message should be started with "ERROR : "
+     */
+    public static void log(String message, boolean isError) {
+        if (LOGGING) {
+            if (isError) {
+                message = "\n\n\n\n\nERROR : " + message + "\n\n\n\n\n";
+            }
+
+            Log.log(message);
+        }
+    }
+
+    /**
+     * Log message. It simply calls "Log.log(...)"
+     */
+    public static void log(String message) {
+        log(message, false);
+    }
 
 }

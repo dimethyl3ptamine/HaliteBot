@@ -6,14 +6,25 @@ import java.util.*;
 
 import static dmt.Utils.getSortedPlanetsByRadius;
 
-public class Game {
+class DefaultStrategy implements Strategy {
 
-    public static void calculateMovements(GameMap gameMap, ArrayList<Move> moveList) {
+    // TODO : this is Strategy copied from V20
+
+    private static final String NAME = "Default (V20)";
+
+    @Override
+    public String getStrategyName() {
+        return NAME;
+    }
+
+    @Override
+    public void calculateMovements(GameMap gameMap, ArrayList<Move> moveList) throws StrategyException {
         Collection<Ship> ships = gameMap.getMyPlayer().getShips().values();
         Collection<Planet> planets = gameMap.getAllPlanets().values();
         ArrayList<Integer> usedPlanets = new ArrayList<>();
 
         for (final Ship ship : ships) {
+            Utils.log("Processing ship: " + ship);
             if (ship.getDockingStatus() != Ship.DockingStatus.Undocked) {
                 continue;
             }
@@ -40,11 +51,29 @@ public class Game {
 
             if (newThrustMove != null) {
                 moveList.add(newThrustMove);
+                //            } else {
+//                Ship enemyShip = getNearestEnemyShip(gameMap, ship);
+//                if (enemyShip != null) {
+//                    newThrustMove = Navigation.navigateShipTowardsTarget(gameMap, ship,
+//                            new Position(enemyShip.getXPos(), enemyShip.getYPos()), Constants.MAX_SPEED,
+//                            true, Constants.MAX_NAVIGATION_CORRECTIONS, Math.PI / 180.0);
+//
+//                    if (newThrustMove != null) {
+//                        moveList.add(newThrustMove);
+//                    } else {
+//                        newThrustMove = Navigation.navigateShipTowardsTarget(gameMap, ship,
+//                                new Position(enemyShip.getXPos(), enemyShip.getYPos()), Constants.MAX_SPEED,
+//                                false, Constants.MAX_NAVIGATION_CORRECTIONS, Math.PI / 180.0);
+//                        if (newThrustMove != null) {
+//                            moveList.add(newThrustMove);
+//                        }
+//                    }
+//                }
             }
         }
     }
 
-    private static boolean isSentToNearestFree(ArrayList<Move> moveList, Ship ship, Planet planet) {
+    private boolean isSentToNearestFree(ArrayList<Move> moveList, Ship ship, Planet planet) {
         if (ship.canDock(planet)) {
             moveList.add(new DockMove(ship, planet));
             return true;
@@ -53,11 +82,11 @@ public class Game {
         return false;
     }
 
-    private static boolean isSentToLargest(GameMap gameMap, ArrayList<Move> moveList, Ship ship, List<Planet> largestPlanets) {
+    private boolean isSentToLargest(GameMap gameMap, ArrayList<Move> moveList, Ship ship, List<Planet> largestPlanets) {
         boolean sentToLargest = false;
 
         for (Planet planet : largestPlanets) {
-            if (planet.isOwned() && planet.getOwner() == gameMap.getMyPlayer().getId() && planet.isFull()) {
+            if (/*planet.isOwned() && */planet.getOwner() == gameMap.getMyPlayer().getId() && planet.isFull()) {
                 continue;
             }
 
@@ -70,13 +99,13 @@ public class Game {
         return sentToLargest;
     }
 
-    private static boolean isSentToNearest(ArrayList<Move> moveList, ArrayList<Integer> usedPlanets, Ship ship, List<Planet> nearestPlanets) {
+    private boolean isSentToNearest(ArrayList<Move> moveList, ArrayList<Integer> usedPlanets, Ship ship, List<Planet> nearestPlanets) {
         for (Planet planet : nearestPlanets) {
             if (planet.isOwned()) {
                 continue;
             }
 
-            if (ship.canDock(planet) && !isPlanetUsed(planet, usedPlanets)) {
+            if (ship.canDock(planet) /*&& !isPlanetUsed(planet, usedPlanets)*/) {
                 moveList.add(new DockMove(ship, planet));
                 usedPlanets.add(planet.getId());
                 return true;
@@ -87,11 +116,11 @@ public class Game {
     }
 
 
-    private static boolean isPlanetUsed(Planet planet, ArrayList<Integer> usedPlanets) {
+    private boolean isPlanetUsed(Planet planet, ArrayList<Integer> usedPlanets) {
         return usedPlanets.contains(planet.getId());
     }
 
-    private static Planet getNearestFreePlanet(List<Planet> nearestPlanets) {
+    private Planet getNearestFreePlanet(List<Planet> nearestPlanets) {
         for (Planet planet : nearestPlanets) {
             if (!planet.isOwned()) {
                 return planet;
@@ -101,7 +130,7 @@ public class Game {
         return nearestPlanets.get(0);
     }
 
-    private static Planet getNearestEnemyPlanet(GameMap gameMap, List<Planet> nearestPlanets) {
+    private Planet getNearestEnemyPlanet(GameMap gameMap, List<Planet> nearestPlanets) {
         for (Planet planet : nearestPlanets) {
             if (planet.getOwner() != gameMap.getMyPlayer().getId()) {
                 return planet;
@@ -111,7 +140,21 @@ public class Game {
         return nearestPlanets.get(0);
     }
 
-    private static List<Planet> getSortedPlanetsByDistance(GameMap gameMap, Ship ship) {
+    private Ship getNearestEnemyShip(GameMap gameMap, Ship ship) {
+        Map<Double, Entity> closestEntities = gameMap.nearbyEntitiesByDistance(ship);
+        for (Entity entity : closestEntities.values()) {
+            if (entity instanceof Ship) {
+                Ship s = (Ship) entity;
+                if (s.getOwner() == gameMap.getMyPlayer().getId()) {
+                    continue;
+                }
+                return s;
+            }
+        }
+        return null;
+    }
+
+    private List<Planet> getSortedPlanetsByDistance(GameMap gameMap, Ship ship) {
         List<Planet> result = new ArrayList<>();
 
         Map<Double, Entity> closestEntities = gameMap.nearbyEntitiesByDistance(ship);
