@@ -35,8 +35,8 @@ public class Game {
 
             // No more free planets? Let's attack the closest one!
             Planet planet = getNearestEnemyPlanet(gameMap, nearestPlanets);
-            final ThrustMove newThrustMove = Navigation.navigateShipToDock(gameMap, ship, planet, Constants.MAX_SPEED);
-//            final ThrustMove newThrustMove = Navigation.navigateShipTowardsTarget(gameMap, ship, new Position(planet.getXPos(), planet.getYPos()), Constants.MAX_SPEED, false, Constants.MAX_NAVIGATION_CORRECTIONS, Math.PI/180.0);
+//            final ThrustMove newThrustMove = Navigation.navigateShipToDock(gameMap, ship, planet, Constants.MAX_SPEED);
+            final ThrustMove newThrustMove = Navigation.navigateShipTowardsTarget(gameMap, ship, new Position(planet.getXPos(), planet.getYPos()), Constants.MAX_SPEED, true, Constants.MAX_NAVIGATION_CORRECTIONS, Math.PI/180.0);
 
             if (newThrustMove != null) {
                 moveList.add(newThrustMove);

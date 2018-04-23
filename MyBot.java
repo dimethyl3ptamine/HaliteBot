@@ -5,7 +5,7 @@ import java.util.*;
 
 public class MyBot {
 
-    private static final String BOT_NAME = "_B0t0V0D_";
+    private static final String BOT_NAME = "_Nag1bAt0r_";
 
     public static void main(final String[] args) {
         final Networking networking = new Networking();
