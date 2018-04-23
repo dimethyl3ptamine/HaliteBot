@@ -30,8 +30,9 @@ class SplitToNearestPlanetsStrategy implements Strategy {
     }
 
     private Map<Ship, Planet> generateShipPlanetMap(GameMap gameMap) {
-        Map<Ship, Planet> shipsPlanetsMap = new TreeMap<>((o1, o2) -> Integer.compare(o1.getId(), o2.getId()));
+        // Consider all player's ships
         Collection<Ship> allShips = gameMap.getMyPlayer().getShips().values();
+        Map<Ship, Planet> shipsPlanetsMap = new TreeMap<>(Comparator.comparingInt(Entity::getId));
 
         for (Ship ship : allShips) {
             List<Planet> nearestPlanets = Utils.getSortedPlanetsByDistance(gameMap, ship);
@@ -106,16 +107,11 @@ class SplitToNearestPlanetsStrategy implements Strategy {
 
     @Override
     public void calculateMovements(GameMap gameMap, ArrayList<Move> moveList) throws StrategyException {
-        Collection<Ship> ships = gameMap.getMyPlayer().getShips().values();
+        Collection<Ship> ships = Utils.getUndockedShips(gameMap);
         Collection<Planet> planets = gameMap.getAllPlanets().values();
 
         for (Ship ship : ships) {
             Utils.log("Processing ship: " + ship);
-
-            if (ship.getDockingStatus() != Ship.DockingStatus.Undocked) {
-                continue;
-            }
-
             Planet planet = Utils.getPlanetById(shipsToPlanets.get(ship.getId()), planets);
 
             if (planet != null) {

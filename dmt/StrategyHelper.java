@@ -3,7 +3,6 @@ package dmt;
 import hlt.GameMap;
 import hlt.Move;
 import hlt.Player;
-import hlt.Ship;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -13,8 +12,10 @@ public enum StrategyHelper {
     HELPER;
 
     private Map<Integer, State> states;
-    private SplitToNearestPlanetsStrategy splitToNearestPlanetsStrategy;
     private DefaultStrategy defaultStrategy;
+    private SplitToNearestPlanetsStrategy splitToNearestPlanetsStrategy;
+    private ExploringStrategy exploringStrategy;
+
     private Strategy currentStrategy;
 
     public void init(GameMap gameMap) {
@@ -27,8 +28,11 @@ public enum StrategyHelper {
         Utils.log(initialMapIntelligence);
 
         states = new HashMap<>();
-        splitToNearestPlanetsStrategy = new SplitToNearestPlanetsStrategy(gameMap);
+
         defaultStrategy = new DefaultStrategy();
+        splitToNearestPlanetsStrategy = new SplitToNearestPlanetsStrategy(gameMap);
+        exploringStrategy = new ExploringStrategy();
+
         currentStrategy = splitToNearestPlanetsStrategy;
     }
 
@@ -39,21 +43,23 @@ public enum StrategyHelper {
         for (Player p : gameMap.getAllPlayers()) {
             mapStat += "; player " + p.getId() + " has " + p.getShips().size();
         }
-
         mapStat += "--> Total ships: " + gameMap.getAllShips().size();
         Utils.log(mapStat);
+        Utils.log("My undocked ships: " + Utils.getUndockedShips(gameMap).size());
         // TODO : analyse previous states
 
-        if (currentStrategy == splitToNearestPlanetsStrategy) {
-            currentStrategy = validateSplitStrategy(gameMap);
-        }
-
+        currentStrategy = getNextStrategy(gameMap);
         Utils.log("Current strategy: " + currentStrategy.getStrategyName());
+
         return currentStrategy;
     }
 
     public int getTurn() {
         return states.size();
+    }
+
+    public State getCurrentState() {
+        return states.get(getTurn());
     }
 
     public void rollbackToDefaultStrategy(GameMap gameMap, ArrayList<Move> moveList) {
@@ -68,21 +74,17 @@ public enum StrategyHelper {
         }
     }
 
-    private Strategy validateSplitStrategy(GameMap gameMap) {
-        Map<Integer, Ship> ships = gameMap.getMyPlayer().getShips();
-        int myShips = ships.size();
-
-        for (Ship ship : ships.values()) {
-            if (ship.getDockingStatus() != Ship.DockingStatus.Undocked) {
-                myShips--;
-            }
+    private Strategy getNextStrategy(GameMap gameMap) {
+        if (currentStrategy == splitToNearestPlanetsStrategy && validateSplitStrategy(gameMap)) {
+            return splitToNearestPlanetsStrategy;
+        } else {
+            // TODO: support extra strategies
+            return exploringStrategy;
         }
+    }
 
-        if (myShips == 0) {
-            currentStrategy = defaultStrategy;
-        }
-
-        return currentStrategy;
+    private boolean validateSplitStrategy(GameMap gameMap) {
+        return Utils.getUndockedShips(gameMap).size() != 0;
     }
 
 }

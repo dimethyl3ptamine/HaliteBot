@@ -6,7 +6,7 @@ import java.util.*;
 
 public class Utils {
 
-    // TODO : fix logging before commit
+    // TODO : always fix logging before commit. Just in case :D
     private static final boolean LOGGING = false;
 
     /**
@@ -34,6 +34,36 @@ public class Utils {
         List<Planet> result = new ArrayList<>();
 
         for (Map.Entry<Planet, Double> entry : sortedPlanets) {
+            result.add(entry.getKey());
+        }
+
+        return result;
+    }
+
+    /**
+     * Returns the list of ships from closest to farthest for this particular Ship.
+     * Set isEnemiesOnly to true if only enemies' ships should be returned.
+     */
+    static List<Ship> getSortedShipsByDistance(GameMap gameMap, Ship myShip, boolean isEnemiesOnly) {
+        int playerId = StrategyHelper.HELPER.getCurrentState().getMyId();
+        Map<Ship, Double> distanceToShips = new HashMap<>();
+
+        for (Ship ship : gameMap.getAllShips()) {
+            if (isEnemiesOnly) {
+                if (ship.getOwner() != playerId) {
+                    distanceToShips.put(ship, ship.getDistanceTo(myShip));
+                }
+            } else {
+                distanceToShips.put(ship, ship.getDistanceTo(myShip));
+            }
+        }
+
+        List<Map.Entry<Ship, Double>> sortedDistances = new ArrayList<>(distanceToShips.entrySet());
+        sortedDistances.sort(Comparator.comparingDouble(Map.Entry::getValue));
+
+        List<Ship> result = new ArrayList<>();
+
+        for (Map.Entry<Ship, Double> entry : sortedDistances) {
             result.add(entry.getKey());
         }
 
@@ -90,6 +120,37 @@ public class Utils {
         }
 
         return null;
+    }
+
+    /**
+     * Returns my player's Undocked ships
+     */
+    static Collection<Ship> getUndockedShips(GameMap gameMap) {
+        List<Ship> result = new ArrayList<>();
+        Collection<Ship> allShips = gameMap.getMyPlayer().getShips().values();
+
+        for (Ship ship : allShips) {
+            if (ship.getDockingStatus() == Ship.DockingStatus.Undocked) {
+                result.add(ship);
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Returns true if the Planet belongs to my player
+     */
+    static boolean isPlanetMine(Planet planet) {
+        int playerId = StrategyHelper.HELPER.getCurrentState().getMyId();
+        return planet.isOwned() && planet.getOwner() == playerId;
+    }
+
+    /**
+     * Returns true if the Planet allows more ships to be docked
+     */
+    static boolean doesPlanetHaveDockingSpots(Planet planet) {
+        return isPlanetMine(planet) && !planet.isFull();
     }
 
     /**

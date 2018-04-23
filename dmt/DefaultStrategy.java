@@ -19,17 +19,13 @@ class DefaultStrategy implements Strategy {
     }
 
     @Override
-    public void calculateMovements(GameMap gameMap, ArrayList<Move> moveList) throws StrategyException {
-        Collection<Ship> ships = gameMap.getMyPlayer().getShips().values();
+    public void calculateMovements(GameMap gameMap, ArrayList<Move> moveList) {
+        Collection<Ship> ships = Utils.getUndockedShips(gameMap);
         Collection<Planet> planets = gameMap.getAllPlanets().values();
         ArrayList<Integer> usedPlanets = new ArrayList<>();
 
         for (final Ship ship : ships) {
             Utils.log("Processing ship: " + ship);
-            if (ship.getDockingStatus() != Ship.DockingStatus.Undocked) {
-                continue;
-            }
-
             List<Planet> nearestPlanets = getSortedPlanetsByDistance(gameMap, ship);
             if (isSentToNearest(moveList, usedPlanets, ship, nearestPlanets)) {
                 continue;
