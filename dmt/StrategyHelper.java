@@ -26,8 +26,6 @@ public enum StrategyHelper {
     private FleeStrategy fleeStrategy;
     private KamikadzeStrategy kamikadzeStrategy;
 
-    private boolean enabledHunter;
-
     public void init(GameMap map) {
         Utils.log(String.format("Initialized map %s x %s with %s players and %s free planets (I am %s)",
                 map.getWidth(), map.getHeight(), map.getAllPlayers().size(), map.getAllPlanets().size(), map.getMyPlayerId()));
@@ -35,11 +33,8 @@ public enum StrategyHelper {
         states = new Stack<>();
         states.push(new GameState(map, 0));
 
-        if (getCurrentState().getNumberOfPlayers() == PLAYERS_GAME_2) {
-            enabledHunter = true;
-        }
-
-        splitToNearestPlanetsStrategy = new SplitToNearestPlanetsStrategy(enabledHunter);
+        boolean isTwoPlayersGame = getCurrentState().getNumberOfPlayers() == PLAYERS_GAME_2;
+        splitToNearestPlanetsStrategy = new SplitToNearestPlanetsStrategy(isTwoPlayersGame);
         moveAndKillStrategy = new MoveAndKillStrategy();
         fleeStrategy = new FleeStrategy();
         kamikadzeStrategy = new KamikadzeStrategy();
@@ -98,7 +93,7 @@ public enum StrategyHelper {
 
     // Returns true if we should proceed to use SplitToNearestPlanetsStrategy
     private boolean validateSplitStrategy() {
-        if (enabledHunter) {
+        if (splitToNearestPlanetsStrategy.isHunterModeActivated()) {
             return true;
         }
 

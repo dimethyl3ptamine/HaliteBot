@@ -13,8 +13,9 @@ class SplitToNearestPlanetsStrategy implements Strategy {
 
     private static final int MAX_CLOSEST_PLANETS = 5;
     private static final int MAX_INITIAL_COLLISION_CHECK = 3;
+    private static final double MAP_FACTOR = 2.5d;
 
-    private boolean enableHunter;
+    private boolean enableHunterMode = false;
 
     @Override
     public String getStrategyName() {
@@ -23,18 +24,24 @@ class SplitToNearestPlanetsStrategy implements Strategy {
 
     private Map<Integer, Integer> shipsToPlanets = new HashMap<>(); // Ship.id -> Planet.id
 
-    SplitToNearestPlanetsStrategy(boolean enableHunter) {
-        this.enableHunter = enableHunter;
-
+    SplitToNearestPlanetsStrategy(boolean twoPlayersGame) {
         Map<Ship, Planet> shipsPlanetsMap = generateShipPlanetMap();
         checkShipsCollision(shipsPlanetsMap);
 
         for (Ship ship : shipsPlanetsMap.keySet()) {
             Utils.log("Sending ship " + ship.getId() + " to planet " + shipsPlanetsMap.get(ship).getId());
             shipsToPlanets.put(ship.getId(), shipsPlanetsMap.get(ship).getId());
+
+            if (twoPlayersGame && !enableHunterMode) {
+                List<Ship> enemies = Utils.getShipsSortedByDistance
+                        (ship, true, getState().getMap().getWidth() / MAP_FACTOR);
+                if (enemies.size() != 0) {
+                    enableHunterMode = true;
+                }
+            }
         }
 
-        if (enableHunter) {
+        if (enableHunterMode) {
             shipsToPlanets.put(0, null);
         }
     }
@@ -136,7 +143,7 @@ class SplitToNearestPlanetsStrategy implements Strategy {
                     navigateToPlanet(moveList, ship, planet);
                 }
             } else {
-                if (enableHunter) {
+                if (enableHunterMode) {
                     attackEnemies(moveList, ship);
                 } else {
                     // This should be a rare case for this strategy, better to rollback
@@ -169,4 +176,7 @@ class SplitToNearestPlanetsStrategy implements Strategy {
         }
     }
 
+    boolean isHunterModeActivated() {
+        return enableHunterMode;
+    }
 }

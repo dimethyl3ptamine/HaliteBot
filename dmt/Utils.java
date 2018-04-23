@@ -75,6 +75,14 @@ public class Utils {
      * Set isEnemiesOnly to true if only enemies' ships should be returned.
      */
     static List<Ship> getShipsSortedByDistance(Ship myShip, boolean isEnemiesOnly) {
+        return getShipsSortedByDistance(myShip, isEnemiesOnly, UNLIMITED_RADIUS);
+    }
+
+    /**
+     * Returns the list of ships from closest to farthest for this particular Ship.
+     * Set isEnemiesOnly to true if only enemies' ships should be returned.
+     */
+    static List<Ship> getShipsSortedByDistance(Ship myShip, boolean isEnemiesOnly, Double radiusLimit) {
         GameState state = StrategyHelper.HELPER.getCurrentState();
         List<Map.Entry<Ship, Double>> sortedDistances = getShipsSortedByDistance(myShip, isEnemiesOnly, state);
         sortedDistances.sort(Comparator.comparingDouble(Map.Entry::getValue));
@@ -82,7 +90,9 @@ public class Utils {
         List<Ship> result = new ArrayList<>();
 
         for (Map.Entry<Ship, Double> entry : sortedDistances) {
-            result.add(entry.getKey());
+            if (entry.getValue() <= radiusLimit) {
+                result.add(entry.getKey());
+            }
         }
 
         return result;
