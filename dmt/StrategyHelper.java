@@ -11,10 +11,12 @@ import java.util.Map;
 public enum StrategyHelper {
     HELPER;
 
+    private static final int FLEE_INDICATOR = 2;
+
     private Map<Integer, State> states;
-    private DefaultStrategy defaultStrategy;
     private SplitToNearestPlanetsStrategy splitToNearestPlanetsStrategy;
     private ExploringStrategy exploringStrategy;
+    private FleeStrategy fleeStrategy;
 
     private Strategy currentStrategy;
 
@@ -29,9 +31,9 @@ public enum StrategyHelper {
 
         states = new HashMap<>();
 
-        defaultStrategy = new DefaultStrategy();
         splitToNearestPlanetsStrategy = new SplitToNearestPlanetsStrategy(gameMap);
         exploringStrategy = new ExploringStrategy();
+        fleeStrategy = new FleeStrategy();
 
         currentStrategy = splitToNearestPlanetsStrategy;
     }
@@ -66,7 +68,7 @@ public enum StrategyHelper {
         Utils.log("Rolling back to default strategy!", true);
 
         moveList.clear();
-        currentStrategy = defaultStrategy;
+        currentStrategy = exploringStrategy;
 
         try {
             currentStrategy.calculateMovements(gameMap, moveList);
@@ -75,9 +77,18 @@ public enum StrategyHelper {
     }
 
     private Strategy getNextStrategy(GameMap gameMap) {
+        if (fleeStrategy.isActivated()) {
+            return fleeStrategy;
+        }
+
         if (currentStrategy == splitToNearestPlanetsStrategy && validateSplitStrategy(gameMap)) {
             return splitToNearestPlanetsStrategy;
         } else {
+            if (validateFleeStrategy(gameMap)) {
+                fleeStrategy.initStrategy(gameMap);
+                return fleeStrategy;
+            }
+
             // TODO: support extra strategies
             return exploringStrategy;
         }
@@ -86,5 +97,24 @@ public enum StrategyHelper {
     private boolean validateSplitStrategy(GameMap gameMap) {
         return Utils.getUndockedShips(gameMap).size() != 0;
     }
+
+    private boolean validateFleeStrategy(GameMap gameMap) {
+        if (gameMap.getAllPlayers().size() != 4) {
+            return false;
+        }
+
+        int all = gameMap.getAllPlanets().size();
+        int mine = Utils.getMyPlanets(gameMap).size();
+        int free = Utils.getFreePlanets(gameMap).size();
+        int enemies = Utils.getEnemiesPlanets(gameMap).size();
+        Utils.log(String.format("Planets info: total %s, mine %s, enemies %s, free %s", all, mine, enemies, free));
+
+        if (free != 0) {
+            return false;
+        }
+
+        return mine <= FLEE_INDICATOR;
+    }
+
 
 }

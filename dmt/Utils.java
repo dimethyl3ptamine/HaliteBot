@@ -7,12 +7,14 @@ import java.util.*;
 public class Utils {
 
     // TODO : always fix logging before commit. Just in case :D
-    private static final boolean LOGGING = false;
+    private static final boolean LOGGING = true;
+
+    // TODO : better to move getFreePlanets() and similar to State.java
 
     /**
      * Returns the list of Planets from biggest to smallest
      */
-    static List<Planet> getSortedPlanetsByRadius(Collection<Planet> allPlanets) {
+    static List<Planet> getPlanetsSortedByRadius(Collection<Planet> allPlanets) {
         ArrayList<Planet> planets = new ArrayList<>(allPlanets);
         planets.sort((o1, o2) -> Double.compare(o2.getRadius(), o1.getRadius()));
         return planets;
@@ -21,7 +23,7 @@ public class Utils {
     /**
      * Returns the list of planets from closest to farthest for this particular Ship
      */
-    static List<Planet> getSortedPlanetsByDistance(GameMap gameMap, Ship ship) {
+    static List<Planet> getPlanetsSortedByDistance(GameMap gameMap, Ship ship) {
         Map<Planet, Double> distanceToPlanet = new HashMap<>();
 
         for (Planet planet : gameMap.getAllPlanets().values()) {
@@ -38,6 +40,26 @@ public class Utils {
         }
 
         return result;
+    }
+
+    /**
+     * Returns the list of planets from closest to farthest for this particular Ship, considering planets' radius
+     */
+    static List<Planet> getPlanetsSortedByRadiusAndDistance(GameMap gameMap, Ship ship, int numberOfPlanets) {
+        int counter = 0;
+        List<Planet> planets = getPlanetsSortedByDistance(gameMap, ship);
+        List<Planet> sortedByRadius = new ArrayList<>();
+
+        for (Planet planet : planets) {
+            if (counter == numberOfPlanets) {
+                break;
+            }
+
+            sortedByRadius.add(planet);
+            counter++;
+        }
+
+        return getPlanetsSortedByRadius(sortedByRadius);
     }
 
     /**
@@ -139,6 +161,61 @@ public class Utils {
     }
 
     /**
+     * Returns my player's planets
+     */
+    static Collection<Planet> getMyPlanets(GameMap gameMap) {
+        List<Planet> result = new ArrayList<>();
+        Collection<Planet> allPlanets = gameMap.getAllPlanets().values();
+
+        for (Planet planet : allPlanets) {
+            if (isPlanetMine(planet)) {
+                result.add(planet);
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Returns enemies planets
+     */
+    static Collection<Planet> getEnemiesPlanets(GameMap gameMap) {
+        List<Planet> result = new ArrayList<>();
+        Collection<Planet> allPlanets = gameMap.getAllPlanets().values();
+
+        for (Planet planet : allPlanets) {
+            if (!isPlanetMine(planet)) {
+                result.add(planet);
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Returns free planets
+     */
+    static Collection<Planet> getFreePlanets(GameMap gameMap) {
+        List<Planet> result = new ArrayList<>();
+        Collection<Planet> allPlanets = gameMap.getAllPlanets().values();
+
+        for (Planet planet : allPlanets) {
+            if (!planet.isOwned()) {
+                result.add(planet);
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Returns all my ships
+     */
+    static Collection<Ship> getMyShips(GameMap gameMap) {
+        return gameMap.getMyPlayer().getShips().values();
+    }
+
+    /**
      * Returns true if the Planet belongs to my player
      */
     static boolean isPlanetMine(Planet planet) {
@@ -151,6 +228,24 @@ public class Utils {
      */
     static boolean doesPlanetHaveDockingSpots(Planet planet) {
         return isPlanetMine(planet) && !planet.isFull();
+    }
+
+    /**
+     * NAVIGATION: Returns true if the ship was sent to attack enemy
+     */
+    static boolean isShipSentToAttack(GameMap gameMap, ArrayList<Move> moveList, Ship ship, List<Ship> enemyShips, boolean avoidObstacles) {
+        for (Ship enemyShip : enemyShips) {
+            ThrustMove newThrustMove = Navigation.navigateShipTowardsTarget(gameMap, ship,
+                    new Position(enemyShip.getXPos(), enemyShip.getYPos()), Constants.MAX_SPEED,
+                    avoidObstacles, Constants.MAX_NAVIGATION_CORRECTIONS, Math.PI / 180.0);
+
+            if (newThrustMove != null) {
+                moveList.add(newThrustMove);
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

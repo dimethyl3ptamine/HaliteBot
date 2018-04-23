@@ -6,10 +6,9 @@ import java.util.*;
 
 class SplitToNearestPlanetsStrategy implements Strategy {
 
-    // TODO : support weights
-
     private static final String NAME = "Split initial ships to nearest planets";
     private static final int MAX_INITIAL_COLLISION_CHECK = 3;
+    private static final int MAX_CLOSEST_PLANETS = 5;
 
     @Override
     public String getStrategyName() {
@@ -35,7 +34,7 @@ class SplitToNearestPlanetsStrategy implements Strategy {
         Map<Ship, Planet> shipsPlanetsMap = new TreeMap<>(Comparator.comparingInt(Entity::getId));
 
         for (Ship ship : allShips) {
-            List<Planet> nearestPlanets = Utils.getSortedPlanetsByDistance(gameMap, ship);
+            List<Planet> nearestPlanets = Utils.getPlanetsSortedByRadiusAndDistance(gameMap, ship, MAX_CLOSEST_PLANETS);
 
             for (Planet planet : nearestPlanets) {
                 if (shipsPlanetsMap.containsValue(planet)) {
@@ -115,22 +114,30 @@ class SplitToNearestPlanetsStrategy implements Strategy {
             Planet planet = Utils.getPlanetById(shipsToPlanets.get(ship.getId()), planets);
 
             if (planet != null) {
-                if (ship.canDock(planet)) {
-                    moveList.add(new DockMove(ship, planet));
-                } else {
-                    ThrustMove newThrustMove;
-                    newThrustMove = Navigation.navigateShipToDock(gameMap, ship, planet, Constants.MAX_SPEED);
+                if (planet.isOwned() && !Utils.isPlanetMine(planet)) {
+                    List<Ship> enemies = Utils.getSortedShipsByDistance(gameMap, ship, true);
 
-                    if (newThrustMove != null) {
-                        moveList.add(newThrustMove);
+                    if (!Utils.isShipSentToAttack(gameMap, moveList, ship, enemies, true)) {
+                        // Can't attack the closest enemy, better to rollback
+                        throw new StrategyException("Can't attack the closest enemy");
+                    }
+                } else {
+                    if (ship.canDock(planet)) {
+                        moveList.add(new DockMove(ship, planet));
                     } else {
-                        // We shouldn't reach this point in this strategy
-                        Utils.log("newThrustMove is null", true);
+                        ThrustMove newThrustMove = Navigation.navigateShipToDock(gameMap, ship, planet, Constants.MAX_SPEED);
+
+                        if (newThrustMove != null) {
+                            moveList.add(newThrustMove);
+                        } else {
+                            // Can't navigate to this planet, better to rollback
+                            throw new StrategyException("newThrustMove is null");
+                        }
                     }
                 }
             } else {
                 // This should be a rare case for this strategy
-                throw new StrategyException("StrategyException: null planet in " + getStrategyName());
+                throw new StrategyException("Null processing planet");
             }
         }
     }

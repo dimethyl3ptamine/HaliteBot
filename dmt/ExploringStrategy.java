@@ -25,7 +25,7 @@ public class ExploringStrategy implements Strategy {
         for (Ship ship : ships) {
             Utils.log("Processing ship: " + ship);
 
-            List<Planet> nearestPlanets = Utils.getSortedPlanetsByDistance(gameMap, ship);
+            List<Planet> nearestPlanets = Utils.getPlanetsSortedByDistance(gameMap, ship);
 
             boolean isSentToNearest = isSentToNearest(moveList, ship, nearestPlanets);
             if (isSentToNearest) {
@@ -41,13 +41,13 @@ public class ExploringStrategy implements Strategy {
 
             List<Ship> enemyShip = Utils.getSortedShipsByDistance(gameMap, ship, true);
 
-            boolean isSentToAttack = isSentToAttack(gameMap, moveList, ship, enemyShip, true);
+            boolean isSentToAttack = Utils.isShipSentToAttack(gameMap, moveList, ship, enemyShip, true);
             if (isSentToAttack) {
                 continue;
             }
             Utils.log("isSentToAttack1 failed");
 
-            isSentToAttack = isSentToAttack(gameMap, moveList, ship, enemyShip, false);
+            isSentToAttack = Utils.isShipSentToAttack(gameMap, moveList, ship, enemyShip, false);
             if (isSentToAttack) {
                 continue;
             }
@@ -86,18 +86,4 @@ public class ExploringStrategy implements Strategy {
         return false;
     }
 
-    private boolean isSentToAttack(GameMap gameMap, ArrayList<Move> moveList, Ship ship, List<Ship> enemyShips, boolean avoidObstacles) {
-        for (Ship enemyShip : enemyShips) {
-            ThrustMove newThrustMove = Navigation.navigateShipTowardsTarget(gameMap, ship,
-                    new Position(enemyShip.getXPos(), enemyShip.getYPos()), Constants.MAX_SPEED,
-                    avoidObstacles, Constants.MAX_NAVIGATION_CORRECTIONS, Math.PI / 180.0);
-
-            if (newThrustMove != null) {
-                moveList.add(newThrustMove);
-                return true;
-            }
-        }
-
-        return false;
-    }
 }
