@@ -9,7 +9,9 @@ public class Utils {
     // TODO : always fix logging before commit. Just in case :D
     private static final boolean LOGGING = false;
 
-    private static final double UNLIMITED_RADIUS = 1000.0;
+    private static final int UNLIMITED_ENEMIES = 1000;
+
+    static final double UNLIMITED_RADIUS = 1000.0;
 
     /**
      * Returns the list of Planets from biggest to smallest
@@ -310,6 +312,13 @@ public class Utils {
         }
 
         return false;
+    }
+
+    /**
+     * Navigation: Returns true if the ship was sent to one of the nearest enemy docked to the planet
+     */
+    static boolean isShipSentToAttackDockedEnemies(ArrayList<Move> moveList, Ship ship, List<Ship> enemyShips) {
+        return isShipSentToAttackDockedEnemies(moveList, ship, enemyShips, UNLIMITED_ENEMIES);
     }
 
     /**

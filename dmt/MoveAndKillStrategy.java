@@ -6,12 +6,17 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-public class MoveOrKillStrategy implements Strategy {
+public class MoveAndKillStrategy implements Strategy {
 
-    private static final String NAME = "Move to planet peacefully (or kill everyone furiously)";
+    private static final String NAME = "Move to planet peacefully (and kill everyone furiously)";
 
     private static final int ENEMIES_DOCKED_SHIPS_THRESHOLD = 13;
-    private static final double MY_LUCKY_RADIUS_NUMBER = 13.13;
+
+    private final double RADIUS_THRESHOLD;
+
+    MoveAndKillStrategy() {
+        RADIUS_THRESHOLD = getState().getMap().getHeight() / 8.0d;
+   }
 
     @Override
     public String getStrategyName() {
@@ -42,7 +47,7 @@ public class MoveOrKillStrategy implements Strategy {
     }
 
     private boolean tryToNavigateToAnyPlanet(ArrayList<Move> moveList, Ship ship) {
-        List<Planet> nearestPlanets = Utils.getPlanetsSortedByDistance(ship, MY_LUCKY_RADIUS_NUMBER);
+        List<Planet> nearestPlanets = Utils.getPlanetsSortedByDistance(ship, RADIUS_THRESHOLD);
 
         if (Utils.isShipSentToNearestPlanet(moveList, ship, nearestPlanets)) {
             return true;

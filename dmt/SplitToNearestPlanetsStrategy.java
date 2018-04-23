@@ -7,11 +7,14 @@ import java.util.*;
 class SplitToNearestPlanetsStrategy implements Strategy {
 
     // TODO : Fix collision validation as in some rare cases collision still occurs
+    // TODO: Fix navigation actually :D
 
     private static final String NAME = "Split initial ships to nearest planets";
 
     private static final int MAX_CLOSEST_PLANETS = 5;
     private static final int MAX_INITIAL_COLLISION_CHECK = 3;
+
+    private boolean enableHunter;
 
     @Override
     public String getStrategyName() {
@@ -20,13 +23,19 @@ class SplitToNearestPlanetsStrategy implements Strategy {
 
     private Map<Integer, Integer> shipsToPlanets = new HashMap<>(); // Ship.id -> Planet.id
 
-    SplitToNearestPlanetsStrategy() {
+    SplitToNearestPlanetsStrategy(boolean enableHunter) {
+        this.enableHunter = enableHunter;
+
         Map<Ship, Planet> shipsPlanetsMap = generateShipPlanetMap();
         checkShipsCollision(shipsPlanetsMap);
 
         for (Ship ship : shipsPlanetsMap.keySet()) {
             Utils.log("Sending ship " + ship.getId() + " to planet " + shipsPlanetsMap.get(ship).getId());
             shipsToPlanets.put(ship.getId(), shipsPlanetsMap.get(ship).getId());
+        }
+
+        if (enableHunter) {
+            shipsToPlanets.put(0, null);
         }
     }
 
@@ -127,8 +136,12 @@ class SplitToNearestPlanetsStrategy implements Strategy {
                     navigateToPlanet(moveList, ship, planet);
                 }
             } else {
-                // This should be a rare case for this strategy, better to rollback
-                throw new StrategyException("Null processing planet");
+                if (enableHunter) {
+                    attackEnemies(moveList, ship);
+                } else {
+                    // This should be a rare case for this strategy, better to rollback
+                    throw new StrategyException("Null processing planet");
+                }
             }
         }
     }
@@ -148,12 +161,11 @@ class SplitToNearestPlanetsStrategy implements Strategy {
         }
     }
 
-    private void attackEnemies(ArrayList<Move> moveList, Ship ship) throws StrategyException {
+    private void attackEnemies(ArrayList<Move> moveList, Ship ship) {
         List<Ship> enemies = Utils.getShipsSortedByDistance(ship, true);
 
-        if (!Utils.isShipSentToAttackEnemies(moveList, ship, enemies, true)) {
-            // Couldn't attack anyone, better to rollback
-            throw new StrategyException("Could't attack any enemy");
+        if (!Utils.isShipSentToAttackDockedEnemies(moveList, ship, enemies)) {
+            Utils.isShipSentToAttackEnemies(moveList, ship, enemies, true);
         }
     }
 

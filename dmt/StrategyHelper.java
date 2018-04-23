@@ -9,17 +9,24 @@ import java.util.Stack;
 public enum StrategyHelper {
     HELPER;
 
+    private static final int SPLIT_STRATEGY_MAX_TURNS = 20;
     private static final int FLEE_PLANETS_INDICATOR = 2;
     private static final int FLEE_SHIPS_INDICATOR = 10;
+
     private static final int PLAYERS_GAME_2 = 2;
     private static final int PLAYERS_GAME_4 = 4;
 
-    private Stack<GameState> states;
-    private SplitToNearestPlanetsStrategy splitToNearestPlanetsStrategy;
-    private MoveOrKillStrategy moveOrKillStrategy;
-    private FleeStrategy fleeStrategy;
+    private static final boolean I_JUST_WANNA_LULZ = Boolean.FALSE; // Let's have some fun!
+    private static final int KAMIKADZE_THRESHOLD = 49;
 
+    private Stack<GameState> states;
     private Strategy currentStrategy;
+    private SplitToNearestPlanetsStrategy splitToNearestPlanetsStrategy;
+    private MoveAndKillStrategy moveAndKillStrategy;
+    private FleeStrategy fleeStrategy;
+    private KamikadzeStrategy kamikadzeStrategy;
+
+    private boolean enabledHunter;
 
     public void init(GameMap map) {
         Utils.log(String.format("Initialized map %s x %s with %s players and %s free planets (I am %s)",
@@ -28,9 +35,14 @@ public enum StrategyHelper {
         states = new Stack<>();
         states.push(new GameState(map, 0));
 
-        splitToNearestPlanetsStrategy = new SplitToNearestPlanetsStrategy();
-        moveOrKillStrategy = new MoveOrKillStrategy();
+        if (getCurrentState().getNumberOfPlayers() == PLAYERS_GAME_2) {
+            enabledHunter = true;
+        }
+
+        splitToNearestPlanetsStrategy = new SplitToNearestPlanetsStrategy(enabledHunter);
+        moveAndKillStrategy = new MoveAndKillStrategy();
         fleeStrategy = new FleeStrategy();
+        kamikadzeStrategy = new KamikadzeStrategy();
 
         currentStrategy = splitToNearestPlanetsStrategy;
     }
@@ -38,7 +50,7 @@ public enum StrategyHelper {
     public Strategy getStrategy(int turn, GameMap gameMap) {
         states.push(new GameState(gameMap, turn));
 
-        // TODO : analyse previous states
+        // TODO : analyse previous states, but too lazy to do that :D
 
         currentStrategy = getBestStrategy();
         Utils.log("Current strategy: " + currentStrategy.getStrategyName());
@@ -54,7 +66,7 @@ public enum StrategyHelper {
         Utils.log("Rolling back to default strategy!", true);
 
         moveList.clear();
-        currentStrategy = moveOrKillStrategy;
+        currentStrategy = moveAndKillStrategy;
 
         try {
             currentStrategy.calculateMovements(moveList);
@@ -70,20 +82,31 @@ public enum StrategyHelper {
         if (currentStrategy == splitToNearestPlanetsStrategy && validateSplitStrategy()) {
             return splitToNearestPlanetsStrategy;
         } else {
+            if (I_JUST_WANNA_LULZ && getCurrentState().getTurn() >= KAMIKADZE_THRESHOLD) {
+                return kamikadzeStrategy;
+            }
+
             if (validateFleeStrategy()) {
                 fleeStrategy.initStrategy();
                 return fleeStrategy;
             }
 
-            // TODO: support extra strategies
-            return moveOrKillStrategy;
+            // TODO: support extra strategies (if have time)
+            return moveAndKillStrategy;
         }
     }
 
+    // Returns true if we should proceed to use SplitToNearestPlanetsStrategy
     private boolean validateSplitStrategy() {
-        return getCurrentState().getMyUndockedShips().size() != 0;
+        if (enabledHunter) {
+            return true;
+        }
+
+        GameState state = getCurrentState();
+        return state.getMyUndockedShips().size() != 0 && state.getTurn() < SPLIT_STRATEGY_MAX_TURNS;
     }
 
+    // Returns true if we should switch to FleeStrategy
     private boolean validateFleeStrategy() {
         GameState state = getCurrentState();
 
