@@ -53,6 +53,11 @@ public class FleeStrategy implements Strategy {
 
     private void fleeAndPray(ArrayList<Move> moveList, int shift, Ship ship) {
         Position cowardsBurrow = shipsToBurrow.get(ship.getId());
+
+        if (cowardsBurrow == null) {
+            cowardsBurrow = new Position(0, 0);
+        }
+
         double desX = getDesertionMetaPosition(shift, cowardsBurrow.getXPos());
         double desY = getDesertionMetaPosition(shift, cowardsBurrow.getYPos());
 
