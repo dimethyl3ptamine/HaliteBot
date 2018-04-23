@@ -16,7 +16,7 @@ public enum StrategyHelper {
     private static final int PLAYERS_GAME_2 = 2;
     private static final int PLAYERS_GAME_4 = 4;
 
-    private static final boolean I_JUST_WANNA_LULZ = Boolean.FALSE; // Let's have some fun!
+    private static final boolean I_JUST_WANNA_LULZ = Boolean.TRUE; // Means I'm fed up having fun! :D
     private static final int KAMIKADZE_THRESHOLD = 49;
 
     private Stack<GameState> states;
@@ -24,7 +24,7 @@ public enum StrategyHelper {
     private SplitToNearestPlanetsStrategy splitToNearestPlanetsStrategy;
     private MoveAndKillStrategy moveAndKillStrategy;
     private FleeStrategy fleeStrategy;
-    private KamikadzeStrategy kamikadzeStrategy;
+    private SuicideStrategy suicideStrategy;
 
     public void init(GameMap map) {
         Utils.log(String.format("Initialized map %s x %s with %s players and %s free planets (I am %s)",
@@ -37,7 +37,7 @@ public enum StrategyHelper {
         splitToNearestPlanetsStrategy = new SplitToNearestPlanetsStrategy(isTwoPlayersGame);
         moveAndKillStrategy = new MoveAndKillStrategy();
         fleeStrategy = new FleeStrategy();
-        kamikadzeStrategy = new KamikadzeStrategy();
+        suicideStrategy = new SuicideStrategy();
 
         currentStrategy = splitToNearestPlanetsStrategy;
     }
@@ -70,6 +70,10 @@ public enum StrategyHelper {
     }
 
     private Strategy getBestStrategy() {
+        if (I_JUST_WANNA_LULZ && getCurrentState().getTurn() >= KAMIKADZE_THRESHOLD) {
+            return suicideStrategy;
+        }
+
         if (fleeStrategy.isActivated()) {
             return fleeStrategy;
         }
@@ -77,10 +81,6 @@ public enum StrategyHelper {
         if (currentStrategy == splitToNearestPlanetsStrategy && validateSplitStrategy()) {
             return splitToNearestPlanetsStrategy;
         } else {
-            if (I_JUST_WANNA_LULZ && getCurrentState().getTurn() >= KAMIKADZE_THRESHOLD) {
-                return kamikadzeStrategy;
-            }
-
             if (validateFleeStrategy()) {
                 fleeStrategy.initStrategy();
                 return fleeStrategy;

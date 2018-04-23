@@ -6,9 +6,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-public class KamikadzeStrategy implements Strategy {
+public class SuicideStrategy implements Strategy {
 
-    private static final String NAME = "No sense to live without our bravest and greatest Emperor!";
+    private static final String NAME = "Thanks a ton to organizers of this hackathon and to Two Sigma for awesome Halite game! I had my fun! Bye)";
 
     private static final double CLOSEST_PLANET_RADIUS = 1.0d;
 
