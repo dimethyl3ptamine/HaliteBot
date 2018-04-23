@@ -222,12 +222,34 @@ public class Utils {
     }
 
     /**
-     * Navigation shortcut
+     * Navigation shortcut to Navigation.navigateShipTowardsTarget()
      */
-    static ThrustMove navigateShipToTarget(Ship ship, Position position, boolean avoidObstacles) {
+    static ThrustMove navigateShipToPosition(Ship ship, Position position, boolean avoidObstacles) {
         GameMap gameMap = StrategyHelper.HELPER.getCurrentState().getMap();
         return Navigation.navigateShipTowardsTarget(gameMap, ship, position, Constants.MAX_SPEED,
                 avoidObstacles, Constants.MAX_NAVIGATION_CORRECTIONS, Math.PI / 180.0);
+    }
+
+    /**
+     * Navigation: move to another ship, but avoid collision
+     */
+    static ThrustMove navigateShipToShip(Ship ship, Ship enemy, boolean avoidObstacles) {
+        GameMap gameMap = StrategyHelper.HELPER.getCurrentState().getMap();
+        return Navigation.navigateShipTowardsTarget(gameMap, ship,
+                getClosestPointToShip(ship, enemy), Constants.MAX_SPEED, avoidObstacles,
+                Constants.MAX_NAVIGATION_CORRECTIONS, Math.PI / 180.0);
+    }
+
+    // Similar to Position.getClosestPoint()
+    private static Position getClosestPointToShip(Entity ship, Entity target) {
+        final double minDistance = Constants.WEAPON_RADIUS - Constants.SHIP_RADIUS;
+        final double radius = target.getRadius() + minDistance;
+        final double angleRad = target.orientTowardsInRad(ship);
+
+        final double x = target.getXPos() + radius * Math.cos(angleRad);
+        final double y = target.getYPos() + radius * Math.sin(angleRad);
+
+        return new Position(x, y);
     }
 
     /**
@@ -235,7 +257,7 @@ public class Utils {
      */
     static boolean isShipSentToAttackEnemies(ArrayList<Move> moveList, Ship ship, List<Ship> enemyShips, boolean avoidObstacles) {
         for (Ship enemyShip : enemyShips) {
-            ThrustMove newThrustMove = navigateShipToTarget(ship, enemyShip, avoidObstacles);
+            ThrustMove newThrustMove = navigateShipToShip(ship, enemyShip, avoidObstacles);
 
             if (newThrustMove != null) {
                 moveList.add(newThrustMove);
@@ -294,7 +316,7 @@ public class Utils {
 
         for (Ship enemy : enemyShips) {
             if (enemy.getDockingStatus() != Ship.DockingStatus.Undocked) {
-                ThrustMove newThrustMove = Utils.navigateShipToTarget(ship, enemy, true);
+                ThrustMove newThrustMove = Utils.navigateShipToShip(ship, enemy, true);
 
                 if (newThrustMove != null) {
                     moveList.add(newThrustMove);

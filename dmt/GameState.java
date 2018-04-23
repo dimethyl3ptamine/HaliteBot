@@ -34,6 +34,8 @@ class GameState {
 
         allPlanets = gameMap.getAllPlanets().values();
         initPlanets();
+
+        printCommonStat();
     }
 
     GameMap getMap() {
@@ -115,6 +117,16 @@ class GameState {
                 }
             }
         }
+    }
+
+    private void printCommonStat() {
+        String commonStat = "Common stat:\n";
+        commonStat += String.format("\tPlanets info: A%s-M%s-F%s-E%s\n",
+                allPlanets.size(), allMyPlanets.size(), freePlanets.size(), enemiesPlanets.size());
+        commonStat += String.format("\tShips info: A%s-M%s-Un%s-E%s",
+                allShips.size(), allMyShips.size(), myUndockedShips.size(), enemiesShips.size());
+
+        Utils.log(commonStat);
     }
 
 }

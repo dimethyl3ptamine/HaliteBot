@@ -37,7 +37,7 @@ public enum StrategyHelper {
 
         // TODO : analyse previous states
 
-        currentStrategy = getNextStrategy();
+        currentStrategy = getBestStrategy();
         Utils.log("Current strategy: " + currentStrategy.getStrategyName());
 
         return currentStrategy;
@@ -59,7 +59,7 @@ public enum StrategyHelper {
         }
     }
 
-    private Strategy getNextStrategy() {
+    private Strategy getBestStrategy() {
         if (fleeStrategy.isActivated()) {
             return fleeStrategy;
         }

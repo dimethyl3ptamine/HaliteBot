@@ -50,7 +50,7 @@ class SplitToNearestPlanetsStrategy implements Strategy {
     }
 
     private void checkShipsCollision(Map<Ship, Planet> shipsPlanetsMap) {
-        int check = 0;
+        int check = -1;
         boolean isCollision;
 
         do {
@@ -60,7 +60,7 @@ class SplitToNearestPlanetsStrategy implements Strategy {
                 Utils.log("Possible collision detected");
                 swapPlanetsForShips(shipsPlanetsMap);
             }
-        } while (isCollision && (check++ <= MAX_INITIAL_COLLISION_CHECK));
+        } while (isCollision && (check++ < MAX_INITIAL_COLLISION_CHECK));
     }
 
     private List<Line> regenerateLines(Map<Ship, Planet> shipsPlanetsMap) {

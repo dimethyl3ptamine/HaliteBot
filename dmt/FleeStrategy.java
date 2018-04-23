@@ -61,7 +61,7 @@ public class FleeStrategy implements Strategy {
         double desX = getDesertionMetaPosition(shift, cowardsBurrow.getXPos());
         double desY = getDesertionMetaPosition(shift, cowardsBurrow.getYPos());
 
-        ThrustMove newThrustMove = Utils.navigateShipToTarget(ship, new Position(desX, desY), true);
+        ThrustMove newThrustMove = Utils.navigateShipToPosition(ship, new Position(desX, desY), true);
 
         // Pray!
         if (newThrustMove != null) {
@@ -71,7 +71,7 @@ public class FleeStrategy implements Strategy {
 
     private double getDesertionMetaPosition(int shift, double pos) {
         int factor = (pos == width || pos == height) ? -1 : 1;
-        return pos + (Constants.FORECAST_FUDGE_FACTOR + 0.25) * shift * factor;
+        return pos + Constants.FORECAST_FUDGE_FACTOR * 2 * shift * factor;
     }
 
     private Position getClosestDesertPoint(Ship ship) {
