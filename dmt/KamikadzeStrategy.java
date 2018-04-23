@@ -8,7 +8,7 @@ import java.util.List;
 
 public class KamikadzeStrategy implements Strategy {
 
-    private static final String NAME = "No sense to live!";
+    private static final String NAME = "No sense to live without our bravest and greatest Emperor!";
 
     private static final double CLOSEST_PLANET_RADIUS = 1.0d;
 

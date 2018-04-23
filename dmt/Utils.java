@@ -234,7 +234,29 @@ public class Utils {
      */
     static ThrustMove navigateShipToDock(Ship ship, Planet planet) {
         GameMap gameMap = StrategyHelper.HELPER.getCurrentState().getMap();
-        return Navigation.navigateShipToDock(gameMap, ship, planet, Constants.MAX_SPEED);
+        ThrustMove result = Navigation.navigateShipToDock(gameMap, ship, planet, Constants.MAX_SPEED);
+
+        saveThrustMove(ship, result);
+
+        return result;
+    }
+
+    // TODO : This is the dumbest collision check, but it's better than nothing :D
+    // TODO : At least it wins more battles than bot_v31
+    private static void saveThrustMove(Ship ship, ThrustMove thrustMove) {
+        if (thrustMove != null) {
+            double newX = ship.getXPos() + Math.sin(thrustMove.getAngle()) * thrustMove.getThrust();
+            double newY = ship.getYPos() + Math.cos(thrustMove.getAngle()) * thrustMove.getThrust();
+
+            // TODO : I guessed we should get next coordinates
+            // TODO : But I don't get why I have a bit different on the next turn :D
+            // TODO : (real TODO not like those above) Learn Math :D :D :D
+            Ship newShip = new Ship(ship.getOwner(), ship.getId(), newX, newY, ship.getHealth(),
+                    ship.getDockingStatus(), ship.getDockedPlanet(), ship.getDockingProgress(), ship.getWeaponCooldown());
+
+            GameMap gameMap = StrategyHelper.HELPER.getCurrentState().getMap();
+            gameMap.shipsMovements.put(ship.getId(), newShip);
+        }
     }
 
     /**
@@ -242,8 +264,12 @@ public class Utils {
      */
     static ThrustMove navigateShipToPosition(Ship ship, Position position, boolean avoidObstacles) {
         GameMap gameMap = StrategyHelper.HELPER.getCurrentState().getMap();
-        return Navigation.navigateShipTowardsTarget(gameMap, ship, position, Constants.MAX_SPEED,
+        ThrustMove result = Navigation.navigateShipTowardsTarget(gameMap, ship, position, Constants.MAX_SPEED,
                 avoidObstacles, Constants.MAX_NAVIGATION_CORRECTIONS, Math.PI / 180.0);
+
+        saveThrustMove(ship, result);
+
+        return result;
     }
 
     /**
@@ -251,9 +277,13 @@ public class Utils {
      */
     static ThrustMove navigateShipToShip(Ship ship, Ship enemy, boolean avoidObstacles) {
         GameMap gameMap = StrategyHelper.HELPER.getCurrentState().getMap();
-        return Navigation.navigateShipTowardsTarget(gameMap, ship,
+        ThrustMove result = Navigation.navigateShipTowardsTarget(gameMap, ship,
                 getClosestPointToShip(ship, enemy), Constants.MAX_SPEED, avoidObstacles,
                 Constants.MAX_NAVIGATION_CORRECTIONS, Math.PI / 180.0);
+
+        saveThrustMove(ship, result);
+
+        return result;
     }
 
     // Similar to Position.getClosestPoint()

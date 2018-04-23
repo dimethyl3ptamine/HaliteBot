@@ -66,11 +66,17 @@ public class GameMap {
         return allShipsUnmodifiable;
     }
 
+    // TODO : Fix it! (as I didn't want to modify hlt package :D)
+    public TreeMap<Integer, Ship> shipsMovements = new TreeMap<>();
+
     public ArrayList<Entity> objectsBetween(Position start, Position target) {
         final ArrayList<Entity> entitiesFound = new ArrayList<>();
 
         addEntitiesBetween(entitiesFound, start, target, planets.values());
         addEntitiesBetween(entitiesFound, start, target, allShips);
+
+        // TODO : Fix it! (as I didn't want to modify hlt package :D)
+        addEntitiesBetween(entitiesFound, start, target, shipsMovements.values());
 
         return entitiesFound;
     }
@@ -115,6 +121,9 @@ public class GameMap {
         players.clear();
         planets.clear();
         allShips.clear();
+
+        // TODO : Fix it! (as I didn't want to modify hlt package :D)
+        shipsMovements.clear();
 
         // update players info
         for (int i = 0; i < numberOfPlayers; ++i) {
