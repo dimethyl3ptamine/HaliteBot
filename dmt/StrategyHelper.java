@@ -9,7 +9,10 @@ import java.util.Stack;
 public enum StrategyHelper {
     HELPER;
 
-    private static final int FLEE_INDICATOR = 2;
+    private static final int FLEE_PLANETS_INDICATOR = 2;
+    private static final int FLEE_SHIPS_INDICATOR = 10;
+    private static final int PLAYERS_GAME_2 = 2;
+    private static final int PLAYERS_GAME_4 = 4;
 
     private Stack<GameState> states;
     private SplitToNearestPlanetsStrategy splitToNearestPlanetsStrategy;
@@ -84,21 +87,24 @@ public enum StrategyHelper {
     private boolean validateFleeStrategy() {
         GameState state = getCurrentState();
 
-        if (state.getNumberOfPlayers() != 4) {
+        if (state.getNumberOfPlayers() != PLAYERS_GAME_4 || state.getNumberOfActivePlayers() <= PLAYERS_GAME_2) {
+            // Not applicable in 2-players games
             return false;
         }
 
-        int all = state.getAllPlanets().size();
-        int mine = state.getAllMyPlanets().size();
-        int free = state.getFreePlanets().size();
-        int enemies = state.getEnemiesPlanets().size();
-        Utils.log(String.format("Planets info: total %s, mine %s, enemies %s, free %s", all, mine, enemies, free));
+        boolean manyFreePlanets = state.getFreePlanets().size() >= FLEE_PLANETS_INDICATOR;
+        boolean fewMyPlanets = state.getAllMyPlanets().size() <= FLEE_PLANETS_INDICATOR;
+        boolean fewMyShips = state.getEnemiesShips().size() > (state.getAllMyShips().size() * FLEE_SHIPS_INDICATOR);
 
-        if (free >= FLEE_INDICATOR) {
+        if (fewMyShips) {
+            return true;
+        }
+
+        if (manyFreePlanets) {
             return false;
         }
 
-        return mine <= FLEE_INDICATOR;
+        return fewMyPlanets;
     }
 
 }

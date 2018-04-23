@@ -1,17 +1,20 @@
 package dmt;
 
-import hlt.GameMap;
-import hlt.Planet;
-import hlt.Ship;
+import hlt.*;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Map;
+import java.util.TreeMap;
 
 class GameState {
+
+    private static final int INITIAL_NUMBER_OF_SHIPS = 3;
 
     private int turn;
     private int myId;
     private int numberOfPlayers;
+    private int numberOfActivePlayers;
     private GameMap gameMap;
     private Collection<Ship> allShips;
     private Collection<Ship> allMyShips;
@@ -21,6 +24,8 @@ class GameState {
     private Collection<Planet> allMyPlanets;
     private Collection<Planet> freePlanets;
     private Collection<Planet> enemiesPlanets;
+    private Map<Integer, Integer> enemiesPlanetMap; // Enemy.id -> Number of planets
+    private Map<Integer, Integer> enemiesShipMap;   // Enemy.id -> Number of ships
 
     GameState(GameMap map, int turn) {
         this.gameMap = map;
@@ -28,13 +33,9 @@ class GameState {
         myId = gameMap.getMyPlayerId();
         numberOfPlayers = gameMap.getAllPlayers().size();
 
-        allMyShips = gameMap.getMyPlayer().getShips().values();
-        allShips = gameMap.getAllShips();
         initShips();
-
-        allPlanets = gameMap.getAllPlanets().values();
         initPlanets();
-
+        initEnemiesStat();
         printCommonStat();
     }
 
@@ -52,6 +53,10 @@ class GameState {
 
     int getNumberOfPlayers() {
         return numberOfPlayers;
+    }
+
+    int getNumberOfActivePlayers() {
+        return numberOfActivePlayers;
     }
 
     Collection<Ship> getAllShips() {
@@ -90,6 +95,9 @@ class GameState {
         myUndockedShips = new ArrayList<>();
         enemiesShips = new ArrayList<>();
 
+        allMyShips = gameMap.getMyPlayer().getShips().values();
+        allShips = gameMap.getAllShips();
+
         for (Ship ship : allShips) {
             if (ship.getOwner() != myId) {
                 enemiesShips.add(ship);
@@ -105,12 +113,18 @@ class GameState {
         allMyPlanets = new ArrayList<>();
         freePlanets = new ArrayList<>();
         enemiesPlanets = new ArrayList<>();
+        enemiesPlanetMap = new TreeMap<>();
+
+        allPlanets = gameMap.getAllPlanets().values();
 
         for (Planet planet : allPlanets) {
             if (!planet.isOwned()) {
                 freePlanets.add(planet);
             } else {
-                if (planet.getOwner() != myId) {
+                int ownerId = planet.getOwner();
+                enemiesPlanetMap.merge(ownerId, 1, (a, b) -> a + b);
+
+                if (ownerId != myId) {
                     enemiesPlanets.add(planet);
                 } else {
                     allMyPlanets.add(planet);
@@ -119,14 +133,40 @@ class GameState {
         }
     }
 
-    private void printCommonStat() {
-        String commonStat = "Common stat:\n";
-        commonStat += String.format("\tPlanets info: A%s-M%s-F%s-E%s\n",
-                allPlanets.size(), allMyPlanets.size(), freePlanets.size(), enemiesPlanets.size());
-        commonStat += String.format("\tShips info: A%s-M%s-Un%s-E%s",
-                allShips.size(), allMyShips.size(), myUndockedShips.size(), enemiesShips.size());
+    private void initEnemiesStat() {
+        numberOfActivePlayers = 0;
+        enemiesShipMap = new TreeMap<>();
 
-        Utils.log(commonStat);
+        for (Player player : gameMap.getAllPlayers()) {
+            int id = player.getId();
+            int ships = player.getShips().size();
+
+            enemiesShipMap.put(id, ships);
+
+            if (enemiesPlanetMap.get(id) != null) {
+                numberOfActivePlayers++;
+                continue;
+            }
+
+            if (ships >= INITIAL_NUMBER_OF_SHIPS) {
+                numberOfActivePlayers++;
+            }
+        }
+    }
+
+    private void printCommonStat() {
+        StringBuilder commonStat = new StringBuilder("Stats:\n");
+        commonStat.append(String.format("\tPlanets common info: All %s - My %s - Free %s - Enemies %s\n",
+                allPlanets.size(), allMyPlanets.size(), freePlanets.size(), enemiesPlanets.size()));
+        commonStat.append(String.format("\tShips common info: All %s - My %s - Undocked %s - Enemies %s\n",
+                allShips.size(), allMyShips.size(), myUndockedShips.size(), enemiesShips.size()));
+
+        for (Integer player : enemiesShipMap.keySet()) {
+            commonStat.append(String.format("\tPlayer %s has %s planets and %s ships\n",
+                    player, enemiesPlanetMap.get(player), enemiesShipMap.get(player)));
+        }
+
+        Utils.log(commonStat.toString());
     }
 
 }

@@ -11,7 +11,7 @@ public class MoveOrKillStrategy implements Strategy {
     private static final String NAME = "Move to planet peacefully (or kill everyone furiously)";
 
     private static final int ENEMIES_DOCKED_SHIPS_THRESHOLD = 13;
-    private static final double MY_LUCKY_RADIUS_NUMBER = 13.0;
+    private static final double MY_LUCKY_RADIUS_NUMBER = 13.13;
 
     @Override
     public String getStrategyName() {
