@@ -2,10 +2,7 @@ package dmt;
 
 import hlt.*;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static dmt.Utils.getSortedPlanetsByRadius;
 
@@ -14,7 +11,7 @@ public class Game {
     public static void calculateMovements(GameMap gameMap, ArrayList<Move> moveList) {
         Collection<Ship> ships = gameMap.getMyPlayer().getShips().values();
         Collection<Planet> planets = gameMap.getAllPlanets().values();
-        ArrayList<Planet> usedPlanets = new ArrayList<>();
+        HashMap<Integer, Boolean> usedPlanets = new HashMap<>();
 
         for (final Ship ship : ships) {
             if (ship.getDockingStatus() != Ship.DockingStatus.Undocked) {
@@ -72,9 +69,7 @@ public class Game {
         return sentToLargest;
     }
 
-    private static boolean isSentToNearest(ArrayList<Move> moveList, ArrayList<Planet> usedPlanets, Ship ship, List<Planet> nearestPlanets) {
-        boolean sentToNearest = false;
-
+    private static boolean isSentToNearest(ArrayList<Move> moveList, HashMap<Integer, Boolean> usedPlanets, Ship ship, List<Planet> nearestPlanets) {
         for (Planet planet : nearestPlanets) {
             if (planet.isOwned()) {
                 continue;
@@ -82,24 +77,17 @@ public class Game {
 
             if (ship.canDock(planet) && !isPlanetUsed(planet, usedPlanets)) {
                 moveList.add(new DockMove(ship, planet));
-                usedPlanets.add(planet);
-                sentToNearest = true;
-                break;
-            }
-        }
-
-        return sentToNearest;
-    }
-
-
-    private static boolean isPlanetUsed(Planet planet, ArrayList<Planet> usedPlanets) {
-        for (Planet p : usedPlanets) {
-            if (p.getId() == planet.getId()) {
+                usedPlanets.put(planet.getId(), Boolean.TRUE);
                 return true;
             }
         }
 
         return false;
+    }
+
+
+    private static boolean isPlanetUsed(Planet planet,  HashMap<Integer, Boolean> usedPlanets) {
+        return usedPlanets.get(planet.getId()) != null;
     }
 
     private static Planet getNearestFreePlanet(List<Planet> nearestPlanets) {
