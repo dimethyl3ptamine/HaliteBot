@@ -1,14 +1,12 @@
 package dmt;
 
-import hlt.GameMap;
-import hlt.Log;
-import hlt.Planet;
-import hlt.Ship;
+import hlt.*;
 
 import java.util.*;
 
 public class Utils {
 
+    // TODO : fix logging before commit
     private static final boolean LOGGING = false;
 
     /**
@@ -64,4 +62,73 @@ public class Utils {
         log(message, false);
     }
 
+    /**
+     * Returns the Planet from the list of planets by its id
+     */
+    static Planet getPlanetById(Integer id, Collection<Planet> planets) {
+        if (id != null) {
+            for (Planet planet : planets) {
+                if (planet.getId() == id) {
+                    return planet;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Returns the Ship from the list of ships by its id
+     */
+    static Ship getShipById(Integer id, Collection<Ship> ships) {
+        if (id != null) {
+            for (Ship ship : ships) {
+                if (ship.getId() == id) {
+                    return ship;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Checks if two Lines intersect or not
+     */
+    static boolean intersectLines(Line line1, Line line2) {
+        return intersectLines(line1.getPos1(), line1.getPos2(), line2.getPos1(), line2.getPos2());
+    }
+
+    private static boolean intersectLines(Position posStart1, Position posEnd1, Position posStart2, Position posEnd2) {
+        double x1 = posStart1.getXPos();
+        double y1 = posStart1.getYPos();
+        double x2 = posEnd1.getXPos();
+        double y2 = posEnd1.getYPos();
+
+        double x3 = posStart2.getXPos();
+        double y3 = posStart2.getYPos();
+        double x4 = posEnd2.getXPos();
+        double y4 = posEnd2.getYPos();
+
+        double a1 = x2 - x1;
+        double b1 = y2 - y1;
+        double a2 = x4 - x3;
+        double b2 = y4 - y3;
+        double c1 = x3 - x1;
+        double c2 = y3 - y1;
+
+        double delta = a1 * b2 - a2 * b1;
+        if (delta == 0) {
+            return false;
+        }
+
+        if (checkIntersectionPoint((c1 * b2 - c2 * a2) / delta)) return false;
+        if (checkIntersectionPoint((c1 * b1 - c2 * a1) / delta)) return false;
+
+        return true;
+    }
+
+    private static boolean checkIntersectionPoint(double delta) {
+        return delta < 0 || delta > 1;
+    }
 }

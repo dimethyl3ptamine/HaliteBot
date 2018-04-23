@@ -9,6 +9,7 @@ import static dmt.Utils.getSortedPlanetsByRadius;
 class DefaultStrategy implements Strategy {
 
     // TODO : this is Strategy copied from V20
+    // Better to not modify it: Rating ~30
 
     private static final String NAME = "Default (V20)";
 
