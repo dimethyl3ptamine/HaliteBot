@@ -9,6 +9,8 @@ public class Utils {
     // TODO : always fix logging before commit. Just in case :D
     private static final boolean LOGGING = false;
 
+    private static final double UNLIMITED_RADIUS = 1000.0;
+
     /**
      * Returns the list of Planets from biggest to smallest
      */
@@ -21,7 +23,7 @@ public class Utils {
     /**
      * Returns the list of planets from closest to farthest for this particular Ship
      */
-    static List<Planet> getPlanetsSortedByDistance(Ship ship) {
+    static List<Planet> getPlanetsSortedByDistance(Ship ship, Double radiusLimit) {
         GameState state = StrategyHelper.HELPER.getCurrentState();
         List<Map.Entry<Planet, Double>> sortedPlanets = getPlanetsSortedByDistance(ship, state);
         sortedPlanets.sort(Comparator.comparingDouble(Map.Entry::getValue));
@@ -29,7 +31,9 @@ public class Utils {
         List<Planet> result = new ArrayList<>();
 
         for (Map.Entry<Planet, Double> entry : sortedPlanets) {
-            result.add(entry.getKey());
+            if (entry.getValue() <= radiusLimit) {
+                result.add(entry.getKey());
+            }
         }
 
         return result;
@@ -53,7 +57,7 @@ public class Utils {
         int counter = -1;
         List<Planet> sortedByRadius = new ArrayList<>();
 
-        for (Planet planet : getPlanetsSortedByDistance(ship)) {
+        for (Planet planet : getPlanetsSortedByDistance(ship, UNLIMITED_RADIUS)) {
             if (counter++ == numberOfPlanets) {
                 break;
             }
