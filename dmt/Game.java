@@ -11,7 +11,7 @@ public class Game {
     public static void calculateMovements(GameMap gameMap, ArrayList<Move> moveList) {
         Collection<Ship> ships = gameMap.getMyPlayer().getShips().values();
         Collection<Planet> planets = gameMap.getAllPlanets().values();
-        HashMap<Integer, Boolean> usedPlanets = new HashMap<>();
+        ArrayList<Integer> usedPlanets = new ArrayList<>();
 
         for (final Ship ship : ships) {
             if (ship.getDockingStatus() != Ship.DockingStatus.Undocked) {
@@ -36,6 +36,7 @@ public class Game {
             // No more free planets? Let's attack the closest one!
             Planet planet = getNearestEnemyPlanet(gameMap, nearestPlanets);
             final ThrustMove newThrustMove = Navigation.navigateShipToDock(gameMap, ship, planet, Constants.MAX_SPEED);
+//            final ThrustMove newThrustMove = Navigation.navigateShipTowardsTarget(gameMap, ship, new Position(planet.getXPos(), planet.getYPos()), Constants.MAX_SPEED, false, Constants.MAX_NAVIGATION_CORRECTIONS, Math.PI/180.0);
 
             if (newThrustMove != null) {
                 moveList.add(newThrustMove);
@@ -69,7 +70,7 @@ public class Game {
         return sentToLargest;
     }
 
-    private static boolean isSentToNearest(ArrayList<Move> moveList, HashMap<Integer, Boolean> usedPlanets, Ship ship, List<Planet> nearestPlanets) {
+    private static boolean isSentToNearest(ArrayList<Move> moveList, ArrayList<Integer> usedPlanets, Ship ship, List<Planet> nearestPlanets) {
         for (Planet planet : nearestPlanets) {
             if (planet.isOwned()) {
                 continue;
@@ -77,7 +78,7 @@ public class Game {
 
             if (ship.canDock(planet) && !isPlanetUsed(planet, usedPlanets)) {
                 moveList.add(new DockMove(ship, planet));
-                usedPlanets.put(planet.getId(), Boolean.TRUE);
+                usedPlanets.add(planet.getId());
                 return true;
             }
         }
@@ -86,8 +87,8 @@ public class Game {
     }
 
 
-    private static boolean isPlanetUsed(Planet planet,  HashMap<Integer, Boolean> usedPlanets) {
-        return usedPlanets.get(planet.getId()) != null;
+    private static boolean isPlanetUsed(Planet planet, ArrayList<Integer> usedPlanets) {
+        return usedPlanets.contains(planet.getId());
     }
 
     private static Planet getNearestFreePlanet(List<Planet> nearestPlanets) {
