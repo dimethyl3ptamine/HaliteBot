@@ -4,14 +4,14 @@ import hlt.*;
 
 import java.util.*;
 
-public class FleeStrategy implements Strategy {
+class FleeStrategy implements Strategy {
 
     private static final String NAME = "Flee, coward, flee (and pray)!";
 
-    private Map<Integer, Position> shipsToBurrow = new HashMap<>(); // Ship.id -> Position
-    private boolean isActivated = false;
     private double width;
     private double height;
+    private boolean isActivated = false;
+    private Map<Integer, Position> shipsToBurrow = new HashMap<>(); // Ship.id -> Position
 
     void initStrategy() {
         if (!isActivated) {
@@ -22,13 +22,9 @@ public class FleeStrategy implements Strategy {
             height = gameMap.getHeight();
 
             for (Ship ship : getState().getAllMyShips()) {
-                shipsToBurrow.put(ship.getId(), getClosestDesertPoint(ship));
+                shipsToBurrow.put(ship.getId(), getDesertTarget(ship));
             }
         }
-    }
-
-    boolean isActivated() {
-        return isActivated;
     }
 
     @Override
@@ -44,6 +40,7 @@ public class FleeStrategy implements Strategy {
 
             if (ship.getDockingStatus() == Ship.DockingStatus.Docked) {
                 moveList.add(new UndockMove(ship));
+                shipsToBurrow.put(ship.getId(), getDesertTarget(ship));
                 continue;
             }
 
@@ -51,11 +48,31 @@ public class FleeStrategy implements Strategy {
         }
     }
 
+    boolean isActivated() {
+        return isActivated;
+    }
+
+    private Position getDesertTarget(Ship ship) {
+        Position pos00 = new Position(0, 0);
+        Position pos0H = new Position(0, height);
+        Position posW0 = new Position(width, 0);
+        Position posWH = new Position(width, height);
+
+        Map<Double, Position> points = new TreeMap<>();
+        points.put(ship.getDistanceTo(pos00), pos00);
+        points.put(ship.getDistanceTo(pos0H), pos0H);
+        points.put(ship.getDistanceTo(posW0), posW0);
+        points.put(ship.getDistanceTo(posWH), posWH);
+
+        return ((TreeMap<Double, Position>) points).firstEntry().getValue();
+    }
+
     private void fleeAndPray(ArrayList<Move> moveList, int shift, Ship ship) {
         Position cowardsBurrow = shipsToBurrow.get(ship.getId());
 
         if (cowardsBurrow == null) {
-            cowardsBurrow = new Position(0, 0);
+            cowardsBurrow = getDesertTarget(ship);
+            shipsToBurrow.put(ship.getId(), cowardsBurrow);
         }
 
         double desX = getDesertionMetaPosition(shift, cowardsBurrow.getXPos());
@@ -72,21 +89,6 @@ public class FleeStrategy implements Strategy {
     private double getDesertionMetaPosition(int shift, double pos) {
         int factor = (pos == width || pos == height) ? -1 : 1;
         return pos + Constants.FORECAST_FUDGE_FACTOR * 2 * shift * factor;
-    }
-
-    private Position getClosestDesertPoint(Ship ship) {
-        Position pos00 = new Position(0, 0);
-        Position pos0H = new Position(0, height);
-        Position posW0 = new Position(width, 0);
-        Position posWH = new Position(width, height);
-
-        Map<Double, Position> points = new TreeMap<>();
-        points.put(ship.getDistanceTo(pos00), pos00);
-        points.put(ship.getDistanceTo(pos0H), pos0H);
-        points.put(ship.getDistanceTo(posW0), posW0);
-        points.put(ship.getDistanceTo(posWH), posWH);
-
-        return ((TreeMap<Double, Position>) points).firstEntry().getValue();
     }
 
 }

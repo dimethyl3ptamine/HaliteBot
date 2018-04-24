@@ -3,24 +3,24 @@ package dmt;
 import hlt.Position;
 
 class Line {
-    private Position pos1;
-    private Position pos2;
+    private Position start;
+    private Position end;
 
-    Line(Position pos1, Position pos2) {
-        this.pos1 = pos1;
-        this.pos2 = pos2;
+    Line(Position start, Position end) {
+        this.start = start;
+        this.end = end;
     }
 
-    Position getPos1() {
-        return pos1;
+    Position getStart() {
+        return start;
     }
 
-    Position getPos2() {
-        return pos2;
+    Position getEnd() {
+        return end;
     }
 
     @Override
     public String toString() {
-        return "Line[" + pos1 + "],[" + pos2 + "]";
+        return "Line[" + start + "," + end + "]";
     }
 }

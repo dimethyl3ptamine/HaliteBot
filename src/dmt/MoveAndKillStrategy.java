@@ -11,11 +11,12 @@ public class MoveAndKillStrategy implements Strategy {
     private static final String NAME = "Move to planet peacefully (and kill everyone furiously)";
 
     private static final int ENEMIES_DOCKED_SHIPS_THRESHOLD = 13;
+    private static final double RADIUS_THRESHOLD_FACTOR = 8.0d;
 
-    private final double RADIUS_THRESHOLD;
+    private final double radiusThreshold;
 
     MoveAndKillStrategy() {
-        RADIUS_THRESHOLD = getState().getMap().getHeight() / 8.0d;
+        radiusThreshold = getState().getMap().getHeight() / RADIUS_THRESHOLD_FACTOR;
    }
 
     @Override
@@ -33,8 +34,6 @@ public class MoveAndKillStrategy implements Strategy {
             if (!tryToNavigateToAnyPlanet(moveList, ship)) {
                 tryToKillAnyEnemy(moveList, ship);
             }
-
-            // TODO : What else we can do here?
         }
     }
 
@@ -47,7 +46,7 @@ public class MoveAndKillStrategy implements Strategy {
     }
 
     private boolean tryToNavigateToAnyPlanet(ArrayList<Move> moveList, Ship ship) {
-        List<Planet> nearestPlanets = Utils.getPlanetsSortedByDistance(ship, RADIUS_THRESHOLD);
+        List<Planet> nearestPlanets = Utils.getPlanetsSortedByDistance(ship, radiusThreshold);
 
         if (Utils.isShipSentToNearestPlanet(moveList, ship, nearestPlanets)) {
             return true;

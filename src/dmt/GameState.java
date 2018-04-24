@@ -23,18 +23,16 @@ class GameState {
     private Collection<Planet> enemiesPlanets;
     private Map<Integer, Integer> enemiesPlanetMap; // Enemy.id -> Number of planets
     private Map<Integer, Integer> enemiesShipMap;   // Enemy.id -> Number of ships
-    private Map<Integer, Map.Entry<Position, Position>> navigationShipsMap; // Ship.id --> Starting point<->End point
+    private Map<Integer, Map.Entry<Position, Position>> navigationShipsMap; // Ship.id --> Start point<->End point
 
     GameState(GameMap map, int turn) {
         this.gameMap = map;
         this.turn = turn;
         myId = gameMap.getMyPlayerId();
         numberOfPlayers = gameMap.getAllPlayers().size();
-
         navigationShipsMap = new HashMap<>();
-
-        initShips();
-        initPlanets();
+        initAllShips();
+        initAllPlanets();
         initEnemiesStat();
         printCommonStat();
     }
@@ -95,7 +93,7 @@ class GameState {
         return navigationShipsMap;
     }
 
-    private void initShips() {
+    private void initAllShips() {
         myUndockedShips = new ArrayList<>();
         enemiesShips = new ArrayList<>();
 
@@ -113,7 +111,7 @@ class GameState {
         }
     }
 
-    private void initPlanets() {
+    private void initAllPlanets() {
         allMyPlanets = new ArrayList<>();
         freePlanets = new ArrayList<>();
         enemiesPlanets = new ArrayList<>();

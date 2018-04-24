@@ -30,7 +30,7 @@ public class MyBot {
             try {
                 strategy.calculateMovements(moveList);
             } catch (StrategyException e) {
-                Utils.log(e.getMessage(), true);
+                Utils.logError(e.getMessage());
                 StrategyHelper.HELPER.rollbackToDefaultStrategy(moveList);
             }
 
