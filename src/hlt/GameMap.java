@@ -70,8 +70,6 @@ public class GameMap {
         final ArrayList<Entity> entitiesFound = new ArrayList<>();
 
         addEntitiesBetween(entitiesFound, start, target, planets.values());
-
-        // TODO : In fact, we need to take care about our ships only )
         addEntitiesBetween(entitiesFound, start, target, allShips);
 
         return entitiesFound;

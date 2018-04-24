@@ -21,7 +21,8 @@ public class Log {
             instance.file.write(message);
             instance.file.write('\n');
             instance.file.flush();
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             e.printStackTrace();
         }
     }
