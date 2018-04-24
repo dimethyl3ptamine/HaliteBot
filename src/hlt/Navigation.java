@@ -1,5 +1,7 @@
 package hlt;
 
+import dmt.Utils;
+
 public class Navigation {
 
     public static ThrustMove navigateShipToDock(
@@ -49,8 +51,24 @@ public class Navigation {
             thrust = maxThrust;
         }
 
-        final int angleDeg = Util.angleRadToDegClipped(angleRad);
+        // TODO : Better to refactor
+        double dx = Math.cos(angleRad) * thrust;
+        double dy = Math.sin(angleRad) * thrust;
+        final Position newTarget1 = new Position(ship.getXPos() + dx, ship.getYPos() + dy);
 
-        return new ThrustMove(ship, angleDeg, thrust);
+        if (avoidObstacles && Utils.intersectShipWithMyOtherShips(ship, newTarget1)) {
+            final double newTargetDx = Math.cos(angleRad + angularStepRad) * distance;
+            final double newTargetDy = Math.sin(angleRad + angularStepRad) * distance;
+            final Position newTarget = new Position(ship.getXPos() + newTargetDx, ship.getYPos() + newTargetDy);
+
+            return navigateShipTowardsTarget(gameMap, ship, newTarget, maxThrust, true, (maxCorrections-1), angularStepRad);
+        }
+
+        final int angleDeg = Util.angleRadToDegClipped(angleRad);
+        ThrustMove result = new ThrustMove(ship, angleDeg, thrust);
+
+        Utils.saveShipToMap(ship, newTarget1);
+
+        return result;
     }
 }

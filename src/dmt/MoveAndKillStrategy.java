@@ -33,6 +33,8 @@ public class MoveAndKillStrategy implements Strategy {
             if (!tryToNavigateToAnyPlanet(moveList, ship)) {
                 tryToKillAnyEnemy(moveList, ship);
             }
+
+            // TODO : What else we can do here?
         }
     }
 
@@ -40,9 +42,7 @@ public class MoveAndKillStrategy implements Strategy {
         List<Ship> enemyShips = Utils.getShipsSortedByDistance(ship, true);
 
         if (!Utils.isShipSentToAttackDockedEnemies(moveList, ship, enemyShips, ENEMIES_DOCKED_SHIPS_THRESHOLD)) {
-            if (!Utils.isShipSentToAttackEnemies(moveList, ship, enemyShips, true)) {
-                Utils.isShipSentToAttackEnemies(moveList, ship, enemyShips, false);
-            }
+            Utils.isShipSentToAttackEnemies(moveList, ship, enemyShips, true);
         }
     }
 

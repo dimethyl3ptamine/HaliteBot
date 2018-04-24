@@ -16,7 +16,7 @@ public enum StrategyHelper {
     private static final int PLAYERS_GAME_2 = 2;
     private static final int PLAYERS_GAME_4 = 4;
 
-    private static final boolean I_JUST_WANNA_LULZ = Boolean.TRUE; // Means I'm fed up having fun! :D
+    private static final boolean I_JUST_WANNA_LULZ = Boolean.FALSE; // Means I'm fed up having fun! :D
     private static final int KAMIKADZE_THRESHOLD = 49;
 
     private Stack<GameState> states;

@@ -2,10 +2,7 @@ package dmt;
 
 import hlt.*;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 
 class GameState {
 
@@ -26,12 +23,15 @@ class GameState {
     private Collection<Planet> enemiesPlanets;
     private Map<Integer, Integer> enemiesPlanetMap; // Enemy.id -> Number of planets
     private Map<Integer, Integer> enemiesShipMap;   // Enemy.id -> Number of ships
+    private Map<Integer, Map.Entry<Position, Position>> navigationShipsMap; // Ship.id --> Starting point<->End point
 
     GameState(GameMap map, int turn) {
         this.gameMap = map;
         this.turn = turn;
         myId = gameMap.getMyPlayerId();
         numberOfPlayers = gameMap.getAllPlayers().size();
+
+        navigationShipsMap = new HashMap<>();
 
         initShips();
         initPlanets();
@@ -89,6 +89,10 @@ class GameState {
 
     Collection<Planet> getFreePlanets() {
         return freePlanets;
+    }
+
+    Map<Integer, Map.Entry<Position, Position>> getNavigationShipsMap() {
+        return navigationShipsMap;
     }
 
     private void initShips() {

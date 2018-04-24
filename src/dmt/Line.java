@@ -18,4 +18,9 @@ class Line {
     Position getPos2() {
         return pos2;
     }
+
+    @Override
+    public String toString() {
+        return "Line[" + pos1 + "],[" + pos2 + "]";
+    }
 }

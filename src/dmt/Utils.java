@@ -4,6 +4,8 @@ import hlt.*;
 
 import java.util.*;
 
+import static dmt.StrategyHelper.HELPER;
+
 public class Utils {
 
     // TODO : always fix logging before commit. Just in case :D
@@ -11,7 +13,7 @@ public class Utils {
 
     private static final int UNLIMITED_ENEMIES = 1000;
 
-    static final double UNLIMITED_RADIUS = 1000.0;
+    static final double UNLIMITED_RADIUS = 1000.0d;
 
     /**
      * Returns the list of Planets from biggest to smallest
@@ -26,7 +28,7 @@ public class Utils {
      * Returns the list of planets from closest to farthest for this particular Ship
      */
     static List<Planet> getPlanetsSortedByDistance(Ship ship, Double radiusLimit) {
-        GameState state = StrategyHelper.HELPER.getCurrentState();
+        GameState state = HELPER.getCurrentState();
         List<Map.Entry<Planet, Double>> sortedPlanets = getPlanetsSortedByDistance(ship, state);
         sortedPlanets.sort(Comparator.comparingDouble(Map.Entry::getValue));
 
@@ -83,7 +85,7 @@ public class Utils {
      * Set isEnemiesOnly to true if only enemies' ships should be returned.
      */
     static List<Ship> getShipsSortedByDistance(Ship myShip, boolean isEnemiesOnly, Double radiusLimit) {
-        GameState state = StrategyHelper.HELPER.getCurrentState();
+        GameState state = HELPER.getCurrentState();
         List<Map.Entry<Ship, Double>> sortedDistances = getShipsSortedByDistance(myShip, isEnemiesOnly, state);
         sortedDistances.sort(Comparator.comparingDouble(Map.Entry::getValue));
 
@@ -170,7 +172,7 @@ public class Utils {
      * Returns true if the Planet belongs to my player
      */
     static boolean isPlanetOwnedByMe(Planet planet) {
-        int playerId = StrategyHelper.HELPER.getCurrentState().getMyId();
+        int playerId = HELPER.getCurrentState().getMyId();
         return planet.isOwned() && planet.getOwner() == playerId;
     }
 
@@ -178,7 +180,7 @@ public class Utils {
      * Returns true if the Planet is owned but not by my player
      */
     static boolean isPlanetOwnedByEnemy(Planet planet) {
-        int playerId = StrategyHelper.HELPER.getCurrentState().getMyId();
+        int playerId = HELPER.getCurrentState().getMyId();
         return planet.isOwned() &&  planet.getOwner() != playerId;
     }
 
@@ -187,6 +189,50 @@ public class Utils {
      */
     static boolean doesPlanetHaveDockingSpots(Planet planet) {
         return isPlanetOwnedByMe(planet) && !planet.isFull();
+    }
+
+    public static void saveShipToMap(Ship ship, Position newPos) {
+        Map<Integer, Map.Entry<Position, Position>> allShips = HELPER.getCurrentState().getNavigationShipsMap();
+        allShips.put(ship.getId(), new AbstractMap.SimpleEntry<>(ship, newPos));
+    }
+
+    /**
+     * Checks if Ships intersect or not
+     */
+    public static boolean intersectShipWithMyOtherShips(Position oldPos, Position targetPos) {
+        Line line1 = getLine(oldPos, targetPos, 90);
+        Line line2 = getLine(oldPos, targetPos, -90);
+
+        Map<Integer, Map.Entry<Position, Position>> allShips = HELPER.getCurrentState().getNavigationShipsMap();
+
+        // TODO : Too many calculations! We should care about closest ships, not all!
+        for (Integer i : allShips.keySet()) {
+            Map.Entry<Position, Position> entry = allShips.get(i);
+            Position pos1 = entry.getKey();
+            Position pos2 = entry.getValue();
+
+            Line line3 = getLine(pos1, pos2, 90);
+            Line line4 = getLine(pos1, pos2, -90);
+
+            if (intersectLines(line1, line3) || intersectLines(line1, line4) || intersectLines(line2, line3) || intersectLines(line2, line4)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static Line getLine(Position oldPos, Position targetPos, int angl) {
+        final double distance = Constants.FORECAST_FUDGE_FACTOR;
+        final double angleRadOld = oldPos.orientTowardsInRad(targetPos);
+
+        final double oldShipDx1 = Math.cos(angleRadOld + angl) * distance;
+        final double oldShipDy1 = Math.sin(angleRadOld + angl) * distance;
+
+        final Position oldShip1 = new Position(oldPos.getXPos() + oldShipDx1, oldPos.getYPos() + oldShipDy1);
+        final Position newShip1 = new Position(targetPos.getXPos() + oldShipDx1, targetPos.getYPos() + oldShipDy1);
+
+        return new Line(oldShip1, newShip1);
     }
 
     /**
@@ -233,41 +279,19 @@ public class Utils {
      * Navigation shortcut
      */
     static ThrustMove navigateShipToDock(Ship ship, Planet planet) {
-        GameMap gameMap = StrategyHelper.HELPER.getCurrentState().getMap();
+        GameMap gameMap = HELPER.getCurrentState().getMap();
         ThrustMove result = Navigation.navigateShipToDock(gameMap, ship, planet, Constants.MAX_SPEED);
 
-        saveThrustMove(ship, result);
-
         return result;
-    }
-
-    // TODO : This is the dumbest collision check, but it's better than nothing :D
-    // TODO : At least it wins more battles than bot_v31
-    private static void saveThrustMove(Ship ship, ThrustMove thrustMove) {
-        if (thrustMove != null) {
-            double newX = ship.getXPos() + Math.sin(thrustMove.getAngle()) * thrustMove.getThrust();
-            double newY = ship.getYPos() + Math.cos(thrustMove.getAngle()) * thrustMove.getThrust();
-
-            // TODO : I guessed we should get next coordinates
-            // TODO : But I don't get why I have a bit different on the next turn :D
-            // TODO : (real TODO not like those above) Learn Math :D :D :D
-            Ship newShip = new Ship(ship.getOwner(), ship.getId(), newX, newY, ship.getHealth(),
-                    ship.getDockingStatus(), ship.getDockedPlanet(), ship.getDockingProgress(), ship.getWeaponCooldown());
-
-            GameMap gameMap = StrategyHelper.HELPER.getCurrentState().getMap();
-            gameMap.shipsMovements.put(ship.getId(), newShip);
-        }
     }
 
     /**
      * Navigation shortcut to Navigation.navigateShipTowardsTarget()
      */
     static ThrustMove navigateShipToPosition(Ship ship, Position position, boolean avoidObstacles) {
-        GameMap gameMap = StrategyHelper.HELPER.getCurrentState().getMap();
+        GameMap gameMap = HELPER.getCurrentState().getMap();
         ThrustMove result = Navigation.navigateShipTowardsTarget(gameMap, ship, position, Constants.MAX_SPEED,
                 avoidObstacles, Constants.MAX_NAVIGATION_CORRECTIONS, Math.PI / 180.0);
-
-        saveThrustMove(ship, result);
 
         return result;
     }
@@ -276,12 +300,10 @@ public class Utils {
      * Navigation: move to another ship, but avoid collision
      */
     static ThrustMove navigateShipToShip(Ship ship, Ship enemy, boolean avoidObstacles) {
-        GameMap gameMap = StrategyHelper.HELPER.getCurrentState().getMap();
+        GameMap gameMap = HELPER.getCurrentState().getMap();
         ThrustMove result = Navigation.navigateShipTowardsTarget(gameMap, ship,
                 getClosestPointToShip(ship, enemy), Constants.MAX_SPEED, avoidObstacles,
                 Constants.MAX_NAVIGATION_CORRECTIONS, Math.PI / 180.0);
-
-        saveThrustMove(ship, result);
 
         return result;
     }
