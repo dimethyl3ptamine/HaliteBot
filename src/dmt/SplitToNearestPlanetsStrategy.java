@@ -6,25 +6,24 @@ import java.util.*;
 
 class SplitToNearestPlanetsStrategy implements Strategy {
 
-    // TODO : Fix collision validation as in some rare cases collision still occurs
-    // TODO: Fix navigation actually :D
-
     private static final String NAME = "Split initial ships to nearest planets";
 
+    private static final double MAP_FACTOR = 2.5d;
     private static final int MAX_CLOSEST_PLANETS = 5;
     private static final int MAX_INITIAL_COLLISION_CHECK = 3;
-    private static final double MAP_FACTOR = 2.5d;
 
     private boolean enableHunterMode = false;
+    private Map<Integer, Integer> shipsToPlanets; // Ship.id -> Planet.id
 
     @Override
     public String getStrategyName() {
         return NAME;
     }
 
-    private Map<Integer, Integer> shipsToPlanets = new HashMap<>(); // Ship.id -> Planet.id
-
     SplitToNearestPlanetsStrategy(boolean twoPlayersGame) {
+        shipsToPlanets = new HashMap<>();
+        double mapFactor = getState().getMap().getWidth() / MAP_FACTOR;
+
         Map<Ship, Planet> shipsPlanetsMap = generateShipPlanetMap();
         checkShipsCollision(shipsPlanetsMap);
 
@@ -33,8 +32,7 @@ class SplitToNearestPlanetsStrategy implements Strategy {
             shipsToPlanets.put(ship.getId(), shipsPlanetsMap.get(ship).getId());
 
             if (twoPlayersGame && !enableHunterMode) {
-                List<Ship> enemies = Utils.getShipsSortedByDistance
-                        (ship, true, getState().getMap().getWidth() / MAP_FACTOR);
+                List<Ship> enemies = Utils.getShipsSortedByDistance(ship, true, mapFactor);
                 if (enemies.size() != 0) {
                     enableHunterMode = true;
                 }
@@ -44,6 +42,36 @@ class SplitToNearestPlanetsStrategy implements Strategy {
         if (enableHunterMode) {
             shipsToPlanets.put(0, null);
         }
+    }
+
+    @Override
+    public void calculateMovements(ArrayList<Move> moveList) throws StrategyException {
+        Collection<Ship> ships = getState().getMyUndockedShips();
+        Collection<Planet> planets = getState().getAllPlanets();
+
+        for (Ship ship : ships) {
+            Utils.log("Processing ship: " + ship);
+            Planet planet = Utils.getPlanetById(shipsToPlanets.get(ship.getId()), planets);
+
+            if (planet != null) {
+                if (Utils.isPlanetOwnedByEnemy(planet)) {
+                    attackEnemies(moveList, ship);
+                } else {
+                    navigateToPlanet(moveList, ship, planet);
+                }
+            } else {
+                if (enableHunterMode) {
+                    attackEnemies(moveList, ship);
+                } else {
+                    // This should be a rare case for this strategy, better to rollback
+                    throw new StrategyException("Null processing planet");
+                }
+            }
+        }
+    }
+
+    boolean isHunterModeActivated() {
+        return enableHunterMode;
     }
 
     private Map<Ship, Planet> generateShipPlanetMap() {
@@ -79,20 +107,6 @@ class SplitToNearestPlanetsStrategy implements Strategy {
         } while (isCollision && (check++ < MAX_INITIAL_COLLISION_CHECK));
     }
 
-    private List<Line> regenerateLines(Map<Ship, Planet> shipsPlanetsMap) {
-        List<Line> lines = new ArrayList<>();
-
-        for (Ship ship : shipsPlanetsMap.keySet()) {
-            Planet planet = shipsPlanetsMap.get(ship);
-
-            if (planet != null) {
-                lines.add(new Line(ship, planet));
-            }
-        }
-
-        return lines;
-    }
-
     private boolean checkLinesCollision(Map<Ship, Planet> shipsPlanetsMap) {
         List<Line> positions = regenerateLines(shipsPlanetsMap);
 
@@ -107,6 +121,20 @@ class SplitToNearestPlanetsStrategy implements Strategy {
         return false;
     }
 
+    private List<Line> regenerateLines(Map<Ship, Planet> shipsPlanetsMap) {
+        List<Line> lines = new ArrayList<>();
+
+        for (Ship ship : shipsPlanetsMap.keySet()) {
+            Planet planet = shipsPlanetsMap.get(ship);
+
+            if (planet != null) {
+                lines.add(new Line(ship, planet));
+            }
+        }
+
+        return lines;
+    }
+
     private void swapPlanetsForShips(Map<Ship, Planet> shipsPlanetsMap) {
         // We should have only three ships in the beginning
         ArrayList<Ship> ships = new ArrayList<>(shipsPlanetsMap.keySet());
@@ -116,7 +144,7 @@ class SplitToNearestPlanetsStrategy implements Strategy {
 
         if (ship0 == null || ship1 == null || ship2 == null) {
             // It seems that something went wrong... better to use the first set of pairs
-            Utils.log("SplitToNearestPlanetsStrategy: null ship for swapPlanetsForShips()", true);
+            Utils.logError("SplitToNearestPlanetsStrategy: null ship for swapPlanetsForShips()");
             return;
         }
 
@@ -125,32 +153,6 @@ class SplitToNearestPlanetsStrategy implements Strategy {
         shipsPlanetsMap.replace(ship0, shipsPlanetsMap.get(ship1));
         shipsPlanetsMap.replace(ship1, shipsPlanetsMap.get(ship2));
         shipsPlanetsMap.replace(ship2, planet0);
-    }
-
-    @Override
-    public void calculateMovements(ArrayList<Move> moveList) throws StrategyException {
-        Collection<Ship> ships = getState().getMyUndockedShips();
-        Collection<Planet> planets = getState().getAllPlanets();
-
-        for (Ship ship : ships) {
-            Utils.log("Processing ship: " + ship);
-            Planet planet = Utils.getPlanetById(shipsToPlanets.get(ship.getId()), planets);
-
-            if (planet != null) {
-                if (Utils.isPlanetOwnedByEnemy(planet)) {
-                    attackEnemies(moveList, ship);
-                } else {
-                    navigateToPlanet(moveList, ship, planet);
-                }
-            } else {
-                if (enableHunterMode) {
-                    attackEnemies(moveList, ship);
-                } else {
-                    // This should be a rare case for this strategy, better to rollback
-                    throw new StrategyException("Null processing planet");
-                }
-            }
-        }
     }
 
     private void navigateToPlanet(ArrayList<Move> moveList, Ship ship, Planet planet) throws StrategyException {
@@ -176,7 +178,4 @@ class SplitToNearestPlanetsStrategy implements Strategy {
         }
     }
 
-    boolean isHunterModeActivated() {
-        return enableHunterMode;
-    }
 }

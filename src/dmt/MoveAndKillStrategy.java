@@ -11,12 +11,12 @@ public class MoveAndKillStrategy implements Strategy {
     private static final String NAME = "Move to planet peacefully (and kill everyone furiously)";
 
     private static final int ENEMIES_DOCKED_SHIPS_THRESHOLD = 13;
-    private static final double RADIUS_THRESHOLD_FACTOR = 8.0d;
+    private static final double MAP_FACTOR = 8.0d;
 
     private final double radiusThreshold;
 
     MoveAndKillStrategy() {
-        radiusThreshold = getState().getMap().getHeight() / RADIUS_THRESHOLD_FACTOR;
+        radiusThreshold = getState().getMap().getHeight() / MAP_FACTOR;
    }
 
     @Override
