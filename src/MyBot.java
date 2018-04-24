@@ -20,18 +20,18 @@ public class MyBot {
         Log.log("**T***H***E***R***E**");
 
         int turn = 0;
-        StrategyHelper.HELPER.init(gameMap);
+        StrategyHelper.INSTANCE.init(gameMap);
 
         while (true) {
             moveList.clear();
             networking.updateMap(gameMap);
 
-            Strategy strategy = StrategyHelper.HELPER.getStrategy(turn++, gameMap);
+            Strategy strategy = StrategyHelper.INSTANCE.getStrategy(turn++, gameMap);
             try {
                 strategy.calculateMovements(moveList);
             } catch (StrategyException e) {
                 Utils.logError(e.getMessage());
-                StrategyHelper.HELPER.rollbackToDefaultStrategy(moveList);
+                StrategyHelper.INSTANCE.rollbackToDefaultStrategy(moveList);
             }
 
             Networking.sendMoves(moveList);

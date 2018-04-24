@@ -11,6 +11,6 @@ public interface Strategy {
     String getStrategyName();
 
     default GameState getState() {
-        return StrategyHelper.HELPER.getCurrentState();
+        return StrategyHelper.INSTANCE.getCurrentState();
     }
 }

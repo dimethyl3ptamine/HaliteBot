@@ -7,24 +7,24 @@ import java.util.ArrayList;
 import java.util.Stack;
 
 public enum StrategyHelper {
-    HELPER;
+    INSTANCE;
 
-    private static final int SPLIT_STRATEGY_MAX_TURNS = 20;
-    private static final int FLEE_PLANETS_INDICATOR = 2;
     private static final int FLEE_SHIPS_INDICATOR = 10;
+    private static final int FLEE_PLANETS_INDICATOR = 2;
+    private static final int SPLIT_STRATEGY_MAX_TURNS = 20;
 
     private static final int PLAYERS_GAME_2 = 2;
     private static final int PLAYERS_GAME_4 = 4;
 
-    private static final boolean I_JUST_WANNA_LULZ = Boolean.FALSE; // Means I'm fed up having fun! :D
     private static final int KAMIKADZE_THRESHOLD = 49;
+    private static final boolean I_JUST_WANNA_LULZ = Boolean.FALSE; // Means I'm fed up having fun! :D
 
     private Stack<GameState> states;
     private Strategy currentStrategy;
-    private SplitToNearestPlanetsStrategy splitToNearestPlanetsStrategy;
-    private MoveAndKillStrategy moveAndKillStrategy;
     private FleeStrategy fleeStrategy;
     private SuicideStrategy suicideStrategy;
+    private MoveAndKillStrategy moveAndKillStrategy;
+    private SplitToNearestPlanetsStrategy splitToNearestPlanetsStrategy;
 
     public void init(GameMap map) {
         Utils.log(String.format("Initialized map %s x %s with %s players and %s free planets (I am %s)",
@@ -35,9 +35,9 @@ public enum StrategyHelper {
 
         boolean isTwoPlayersGame = getCurrentState().getNumberOfPlayers() == PLAYERS_GAME_2;
         splitToNearestPlanetsStrategy = new SplitToNearestPlanetsStrategy(isTwoPlayersGame);
-        moveAndKillStrategy = new MoveAndKillStrategy();
         fleeStrategy = new FleeStrategy();
         suicideStrategy = new SuicideStrategy();
+        moveAndKillStrategy = new MoveAndKillStrategy();
 
         currentStrategy = splitToNearestPlanetsStrategy;
     }
@@ -45,20 +45,14 @@ public enum StrategyHelper {
     public Strategy getStrategy(int turn, GameMap gameMap) {
         states.push(new GameState(gameMap, turn));
 
-        // TODO : analyse previous states, but too lazy to do that :D
-
         currentStrategy = getBestStrategy();
         Utils.log("Current strategy: " + currentStrategy.getStrategyName());
 
         return currentStrategy;
     }
 
-    public GameState getCurrentState() {
-        return states.peek();
-    }
-
     public void rollbackToDefaultStrategy(ArrayList<Move> moveList) {
-        Utils.log("Rolling back to default strategy!", true);
+        Utils.logError("Rolling back to default strategy!");
 
         moveList.clear();
         currentStrategy = moveAndKillStrategy;
@@ -67,6 +61,10 @@ public enum StrategyHelper {
             currentStrategy.calculateMovements(moveList);
         } catch (StrategyException ignored) {
         }
+    }
+
+    GameState getCurrentState() {
+        return states.peek();
     }
 
     private Strategy getBestStrategy() {
@@ -86,19 +84,20 @@ public enum StrategyHelper {
                 return fleeStrategy;
             }
 
-            // TODO: support extra strategies (if have time)
             return moveAndKillStrategy;
         }
     }
 
-    // Returns true if we should proceed to use SplitToNearestPlanetsStrategy
+    // Returns true if we should proceed with SplitToNearestPlanetsStrategy
     private boolean validateSplitStrategy() {
-        if (splitToNearestPlanetsStrategy.isHunterModeActivated()) {
+        GameState state = getCurrentState();
+        boolean lessThanMaxTurns = state.getTurn() < SPLIT_STRATEGY_MAX_TURNS;
+
+        if (splitToNearestPlanetsStrategy.isHunterModeActivated() && lessThanMaxTurns) {
             return true;
         }
 
-        GameState state = getCurrentState();
-        return state.getMyUndockedShips().size() != 0 && state.getTurn() < SPLIT_STRATEGY_MAX_TURNS;
+        return state.getMyUndockedShips().size() != 0 && lessThanMaxTurns;
     }
 
     // Returns true if we should switch to FleeStrategy
@@ -106,7 +105,6 @@ public enum StrategyHelper {
         GameState state = getCurrentState();
 
         if (state.getNumberOfPlayers() != PLAYERS_GAME_4 || state.getNumberOfActivePlayers() <= PLAYERS_GAME_2) {
-            // Not applicable in 2-players games
             return false;
         }
 

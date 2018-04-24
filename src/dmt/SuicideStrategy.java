@@ -8,7 +8,7 @@ import java.util.List;
 
 public class SuicideStrategy implements Strategy {
 
-    private static final String NAME = "Thanks a ton to organizers of this hackathon and to Two Sigma for awesome Halite game! I had my fun! Bye)";
+    private static final String NAME = "Suicide Kamikadzes :D";
 
     private static final double CLOSEST_PLANET_RADIUS = 1.0d;
 
