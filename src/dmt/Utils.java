@@ -4,14 +4,14 @@ import hlt.*;
 
 import java.util.*;
 
-import static dmt.StrategyHelper.HELPER;
+import static dmt.StrategyHelper.INSTANCE;
 
 public class Utils {
 
-    // TODO : always fix logging before commit. Just in case :D
     private static final boolean LOGGING = false;
 
     private static final int UNLIMITED_ENEMIES = 1000;
+    private static final int PERPENDICULAR_ANGLE = 90;
 
     static final double UNLIMITED_RADIUS = 1000.0d;
 
@@ -28,7 +28,7 @@ public class Utils {
      * Returns the list of planets from closest to farthest for this particular Ship
      */
     static List<Planet> getPlanetsSortedByDistance(Ship ship, Double radiusLimit) {
-        GameState state = HELPER.getCurrentState();
+        GameState state = INSTANCE.getCurrentState();
         List<Map.Entry<Planet, Double>> sortedPlanets = getPlanetsSortedByDistance(ship, state);
         sortedPlanets.sort(Comparator.comparingDouble(Map.Entry::getValue));
 
@@ -81,11 +81,11 @@ public class Utils {
     }
 
     /**
-     * Returns the list of ships from closest to farthest for this particular Ship.
+     * Returns the list of ships from closest to farthest for this particular Ship limited by radius.
      * Set isEnemiesOnly to true if only enemies' ships should be returned.
      */
     static List<Ship> getShipsSortedByDistance(Ship myShip, boolean isEnemiesOnly, Double radiusLimit) {
-        GameState state = HELPER.getCurrentState();
+        GameState state = INSTANCE.getCurrentState();
         List<Map.Entry<Ship, Double>> sortedDistances = getShipsSortedByDistance(myShip, isEnemiesOnly, state);
         sortedDistances.sort(Comparator.comparingDouble(Map.Entry::getValue));
 
@@ -118,24 +118,21 @@ public class Utils {
 
     /**
      * Log message. It simply calls "Log.log(...)"
-     *
-     * @param isError - true if message should be started with "ERROR : "
      */
-    public static void log(String message, boolean isError) {
+    static void log(String message) {
         if (LOGGING) {
-            if (isError) {
-                message = "\n\n\n\n\nERROR : " + message + "\n\n\n\n\n";
-            }
-
             Log.log(message);
         }
     }
 
     /**
-     * Log message. It simply calls "Log.log(...)"
+     * Log error message. It simply calls "Log.log(...)"
      */
-    public static void log(String message) {
-        log(message, false);
+    public static void logError(String message) {
+        if (LOGGING) {
+            message = "\n\n\n\n\nERROR : " + message + "\n\n\n\n\n";
+            Log.log(message);
+        }
     }
 
     /**
@@ -172,49 +169,49 @@ public class Utils {
      * Returns true if the Planet belongs to my player
      */
     static boolean isPlanetOwnedByMe(Planet planet) {
-        int playerId = HELPER.getCurrentState().getMyId();
+        int playerId = INSTANCE.getCurrentState().getMyId();
         return planet.isOwned() && planet.getOwner() == playerId;
     }
 
     /**
-     * Returns true if the Planet is owned but not by my player
+     * Returns true if the Planet is owned by enemy
      */
     static boolean isPlanetOwnedByEnemy(Planet planet) {
-        int playerId = HELPER.getCurrentState().getMyId();
+        int playerId = INSTANCE.getCurrentState().getMyId();
         return planet.isOwned() &&  planet.getOwner() != playerId;
     }
 
     /**
-     * Returns true if the Planet allows more ships to be docked
+     * Returns true if the Planet allows ships to be docked
      */
     static boolean doesPlanetHaveDockingSpots(Planet planet) {
         return isPlanetOwnedByMe(planet) && !planet.isFull();
     }
 
-    public static void saveShipToMap(Ship ship, Position newPos) {
-        Map<Integer, Map.Entry<Position, Position>> allShips = HELPER.getCurrentState().getNavigationShipsMap();
+    /**
+     * Adds the current ship into the map of movements
+     */
+    static void saveShipToNavigationMap(Ship ship, Position newPos) {
+        Map<Integer, Map.Entry<Position, Position>> allShips = INSTANCE.getCurrentState().getNavigationShipsMap();
         allShips.put(ship.getId(), new AbstractMap.SimpleEntry<>(ship, newPos));
     }
 
     /**
      * Checks if Ships intersect or not
      */
-    public static boolean intersectShipWithMyOtherShips(Position oldPos, Position targetPos) {
-        Line line1 = getLine(oldPos, targetPos, 90);
-        Line line2 = getLine(oldPos, targetPos, -90);
+    static boolean intersectShipWithMyOtherShips(Position oldShipPos, Position targetShipPos) {
+        Line line1 = getShiftedLine(oldShipPos, targetShipPos, PERPENDICULAR_ANGLE);
+        Line line2 = getShiftedLine(oldShipPos, targetShipPos, -PERPENDICULAR_ANGLE);
 
-        Map<Integer, Map.Entry<Position, Position>> allShips = HELPER.getCurrentState().getNavigationShipsMap();
+        Map<Integer, Map.Entry<Position, Position>> allShips = INSTANCE.getCurrentState().getNavigationShipsMap();
 
-        // TODO : Too many calculations! We should care about closest ships, not all!
         for (Integer i : allShips.keySet()) {
             Map.Entry<Position, Position> entry = allShips.get(i);
-            Position pos1 = entry.getKey();
-            Position pos2 = entry.getValue();
+            Line line3 = getShiftedLine(entry.getKey(), entry.getValue(), PERPENDICULAR_ANGLE);
+            Line line4 = getShiftedLine(entry.getKey(), entry.getValue(), -PERPENDICULAR_ANGLE);
 
-            Line line3 = getLine(pos1, pos2, 90);
-            Line line4 = getLine(pos1, pos2, -90);
-
-            if (intersectLines(line1, line3) || intersectLines(line1, line4) || intersectLines(line2, line3) || intersectLines(line2, line4)) {
+            if (intersectLines(line1, line3) || intersectLines(line1, line4) ||
+                    intersectLines(line2, line3) || intersectLines(line2, line4)) {
                 return true;
             }
         }
@@ -222,24 +219,23 @@ public class Utils {
         return false;
     }
 
-    private static Line getLine(Position oldPos, Position targetPos, int angl) {
-        final double distance = Constants.FORECAST_FUDGE_FACTOR;
-        final double angleRadOld = oldPos.orientTowardsInRad(targetPos);
+    private static Line getShiftedLine(Position currentPos, Position targetPos, int angle) {
+        double distance = Constants.FORECAST_FUDGE_FACTOR;
+        double angleRadCurrent = currentPos.orientTowardsInRad(targetPos);
+        double dx = Math.cos(angleRadCurrent + angle) * distance;
+        double dy = Math.sin(angleRadCurrent + angle) * distance;
 
-        final double oldShipDx1 = Math.cos(angleRadOld + angl) * distance;
-        final double oldShipDy1 = Math.sin(angleRadOld + angl) * distance;
+        Position oldPosition = new Position(currentPos.getXPos() + dx, currentPos.getYPos() + dy);
+        Position newPosition = new Position(targetPos.getXPos() + dx, targetPos.getYPos() + dy);
 
-        final Position oldShip1 = new Position(oldPos.getXPos() + oldShipDx1, oldPos.getYPos() + oldShipDy1);
-        final Position newShip1 = new Position(targetPos.getXPos() + oldShipDx1, targetPos.getYPos() + oldShipDy1);
-
-        return new Line(oldShip1, newShip1);
+        return new Line(oldPosition, newPosition);
     }
 
     /**
      * Checks if two Lines intersect or not
      */
     static boolean intersectLines(Line line1, Line line2) {
-        return intersectLines(line1.getPos1(), line1.getPos2(), line2.getPos1(), line2.getPos2());
+        return intersectLines(line1.getStart(), line1.getEnd(), line2.getStart(), line2.getEnd());
     }
 
     private static boolean intersectLines(Position posStart1, Position posEnd1, Position posStart2, Position posEnd2) {
@@ -276,46 +272,39 @@ public class Utils {
     }
 
     /**
-     * Navigation shortcut
+     * Navigation shortcut to Navigation.navigateShipToDock()
      */
     static ThrustMove navigateShipToDock(Ship ship, Planet planet) {
-        GameMap gameMap = HELPER.getCurrentState().getMap();
-        ThrustMove result = Navigation.navigateShipToDock(gameMap, ship, planet, Constants.MAX_SPEED);
-
-        return result;
+        GameMap gameMap = INSTANCE.getCurrentState().getMap();
+        return Navigation.navigateShipToDock(gameMap, ship, planet, Constants.MAX_SPEED);
     }
 
     /**
      * Navigation shortcut to Navigation.navigateShipTowardsTarget()
      */
     static ThrustMove navigateShipToPosition(Ship ship, Position position, boolean avoidObstacles) {
-        GameMap gameMap = HELPER.getCurrentState().getMap();
-        ThrustMove result = Navigation.navigateShipTowardsTarget(gameMap, ship, position, Constants.MAX_SPEED,
+        GameMap gameMap = INSTANCE.getCurrentState().getMap();
+        return Navigation.navigateShipTowardsTarget(gameMap, ship, position, Constants.MAX_SPEED,
                 avoidObstacles, Constants.MAX_NAVIGATION_CORRECTIONS, Math.PI / 180.0);
-
-        return result;
     }
 
     /**
      * Navigation: move to another ship, but avoid collision
      */
     static ThrustMove navigateShipToShip(Ship ship, Ship enemy, boolean avoidObstacles) {
-        GameMap gameMap = HELPER.getCurrentState().getMap();
-        ThrustMove result = Navigation.navigateShipTowardsTarget(gameMap, ship,
-                getClosestPointToShip(ship, enemy), Constants.MAX_SPEED, avoidObstacles,
-                Constants.MAX_NAVIGATION_CORRECTIONS, Math.PI / 180.0);
-
-        return result;
+        GameMap gameMap = INSTANCE.getCurrentState().getMap();
+        return Navigation.navigateShipTowardsTarget(gameMap, ship, getClosestPointToShip(ship, enemy),
+                Constants.MAX_SPEED, avoidObstacles, Constants.MAX_NAVIGATION_CORRECTIONS, Math.PI / 180.0);
     }
 
     // Similar to Position.getClosestPoint()
     private static Position getClosestPointToShip(Entity ship, Entity target) {
-        final double minDistance = Constants.WEAPON_RADIUS - Constants.SHIP_RADIUS;
-        final double radius = target.getRadius() + minDistance;
-        final double angleRad = target.orientTowardsInRad(ship);
+        double minDistance = Constants.WEAPON_RADIUS - Constants.SHIP_RADIUS;
+        double radius = target.getRadius() + minDistance;
+        double angleRad = target.orientTowardsInRad(ship);
 
-        final double x = target.getXPos() + radius * Math.cos(angleRad);
-        final double y = target.getYPos() + radius * Math.sin(angleRad);
+        double x = target.getXPos() + radius * Math.cos(angleRad);
+        double y = target.getYPos() + radius * Math.sin(angleRad);
 
         return new Position(x, y);
     }
@@ -360,7 +349,7 @@ public class Utils {
                     moveList.add(new DockMove(ship, planet));
                     return true;
                 } else {
-                    // No need to rush to the last free planet like an idiot
+                    // No need to rush to the last free planet
                     if (freePlanets != 1) {
                         ThrustMove newThrustMove = Utils.navigateShipToDock(ship, planet);
 
@@ -384,7 +373,8 @@ public class Utils {
     }
 
     /**
-     * Navigation: Returns true if the ship was sent to one of the nearest enemy docked to the planet
+     * Navigation: Returns true if the ship was sent to one of the nearest enemy docked to the planet limited by the
+     * number of enemies to be checked.
      */
     static boolean isShipSentToAttackDockedEnemies(ArrayList<Move> moveList, Ship ship, List<Ship> enemyShips, int threshold) {
         int counter = -1;
